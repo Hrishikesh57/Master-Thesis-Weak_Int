@@ -4,7 +4,6 @@
 *.o
 *.mod
 *.exe
-build/
 
 # ============================
 # Python caches & venv
