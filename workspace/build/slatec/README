@@ -1,0 +1,22 @@
+This directory contains the SLATEC library from NETLIB [1]. The directory
+'src' contains the source files and the directory 'old' contains the original
+versions of the source file 'd1mach.f', 'i1mach.f', and 'r1mach.f'. The
+versions in the source directory 'src' of these files are modified versions of
+these source files.
+
+The source files 'd1mach.f' and 'r1mach.f' use Fortran 95 intrinsic functions
+to obtain the machine constants. The expressions for the machine constants in
+terms of these intrinsic functions have been obtained from John Burkhardt's
+webpage [2]. (Note however that there is an ambiguity on that webpage: 'log'
+denotes the base 10 logarithm and not the natural logarithm.) The use of
+these intrinsic functions make these source files portable, however, you need
+a Fortran 95 compiler to compile these files.
+
+The source file 'i1mach.f' in 'src' is the version provided by 'slatec4linux'
+on the webpage [1]. I (Halil Cakir) am not sure how to make all of the
+definitions of that file portable.
+
+[1] http://www.netlib.org/slatec/ (retrieved: 2017/07/27)
+[2] http://people.sc.fsu.edu/~jburkardt/f_src/machine/machine.html
+    (retrieved: 2017/07/27)
+
