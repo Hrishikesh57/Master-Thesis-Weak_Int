@@ -1,0 +1,51 @@
+1 Introduction to Weak Interaction
+1.1 Motivation & Scope
+1.2 Atomic Parity Violation: Historical Experiments (Cs, Tl, U)
+1.3 Outline of the Thesis
+
+2 Theoretical Background
+2.1 QED in External Fields
+ 2.1.1 Standard QED Lagrangian
+ 2.1.2 Why the Coulomb Field Demands Non-Perturbative Treatment
+2.2 The Furry Picture
+ 2.2.1 “Dressed” Dirac Equation [iγ⋅∂−m−eγ⋅Aext]ψ=0[iγ⋅∂−m−eγ⋅Aext​]ψ=0 (Eq. 1.49)
+ 2.2.2 Expansion of the Furry-picture Propagator S(x,y)S(x,y) (Eqs. 1.45–1.46)
+2.3 Weak Neutral Currents in Atoms
+ 2.3.1 Low-Energy Z0 Exchange → Contact Interaction
+ 2.3.2 Parity-Violating Potential −γ5 ρW(r)−γ5ρW​(r) & Selection Rules
+2.4 Finite Nuclear Size & Charge Distributions
+ 2.4.1 Uniform-Sphere Model for ρC(r)ρC​(r) and ρW(r)ρW​(r)
+ 2.4.2 Impact on Small-rr Behavior of Dirac Wavefunctions
+
+3 First-Order Parity-Violating Energy Shifts: Analytic Treatment
+3.1 Perturbation Theory in the Furry Basis
+3.2 Non-Relativistic Limit: 1s and 2s States
+3.3 Relativistic Analytic Results for 1s and 2s
+3.4 Discussion & Comparison with Hydrogenic Case
+
+4 Numerical Method: B-Spline Implementation
+4.1 Radial Grid, Knot Sequences & Boundary Conditions
+4.2 Building the Furry-Picture Basis with B-Splines
+4.3 Numerical Evaluation of ΔE(1)ΔE(1) for 1s, 2s
+
+5 Second-Order Energy Corrections & Forbidden Transitions
+5.1 Formalism: Sum Over Intermediate States
+5.2 Numerical B-Spline Treatment of ΔE(2)ΔE(2)
+5.3 Parity-Violating E1 Amplitudes
+ 5.3.1 S ↔ S Transitions (e.g.\ 6s → 7s)
+ 5.3.2 S ↔ D Transitions and Hyperfine/Anapole Effects
+ 5.3.3 Stark-Interference Techniques for Signal Amplification
+
+6 Applications & Results for Uranium (and Other Heavy Ions)
+6.1 Choice of Nuclear Radius, QWQW​, and Other Parameters
+6.2 First- and Second-Order Shifts: Numerical Values & Uncertainties
+6.3 Comparison with Cs, Fr, Highly Charged Ions
+
+7 Conclusion and Outlook
+7.1 Summary of Key Findings
+7.2 Theoretical and Experimental Prospects
+
+Appendices
+A Dirac Radial Functions & Normalizations
+B Details of g-Factor Corrections
+C Computational Details & Convergence Tests

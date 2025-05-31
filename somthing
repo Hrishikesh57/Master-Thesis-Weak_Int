@@ -1,0 +1,431 @@
+program compute_radial_integrals
+    use bspqed_potentials
+    use bspqed_physconsts
+    use bspqed_quadrature       ! <--- We bring in ngl40, nodes40, weights40, etc.
+    implicit none
+
+    ! ==============================
+    ! Existing declarations
+    ! ==============================
+    integer :: npoints, i
+    integer :: iL, iR
+    double precision, allocatable :: r(:), g(:), f(:), V(:)
+    double precision :: E_pot, Z, N, R_fm, R_rel, c
+    character(len=256) :: filename
+    type(weak_potential) :: potential
+    character(len=6) :: choice
+
+    ! ==============================
+    ! NEW declarations for 2nd order and energy prompt
+    ! (Placed at the top so the compiler sees them
+    !  before any executable statements.)
+    ! ==============================
+    character(len=256) :: filename_n, filename_s
+    integer :: npoints_n, npoints_s
+    double precision, allocatable :: r_n(:), G_n(:), F_n(:)
+    double precision, allocatable :: r_s(:), G_s(:), F_s(:)
+    double precision :: M_n_s
+    double precision :: mc2 = 1.0d0  ! Rest energy in relativistic units
+
+    ! For the energy state prompt:
+    character(len=20) :: order_choice
+    character(len=20) :: state_initial, state_intermediate
+    double precision :: E_initial, E_intermediate, Delta_E
+    double precision :: n_val, j_val
+
+    ! --------------------------------------------------------------
+    ! Prompt for 1st or 2nd order (added code, no original lines removed)
+    ! --------------------------------------------------------------
+    print *, 'Do you want 1st-order or 2nd-order energy corrections? (enter 1 or 2)'
+    read *, order_choice
+
+    ! Prompt user for atomic number Z, N, and R in fm
+    print *, 'Enter atomic number Z (e.g., 92 for Uranium):'
+    read *, Z
+    print *, 'Enter number of neutrons N (e.g., 146 for Uranium):'
+    read *, N
+    print *, 'Enter nuclear radius R in fm (e.g., 5.8571 for Uranium):'
+    read *, R_fm
+
+    ! Ask user for calculation type: rel or nonrel
+    print *, 'Choose potential type: rel or nonrel:'
+    read *, choice
+    if (trim(choice) == 'rel') then
+         c = 1
+    else if (trim(choice) == 'nonrel') then
+         c = 137036.0d0
+    else
+         print *, 'Invalid option. Exiting.'
+         stop
+    end if
+
+    ! Convert R from fm to relativistic units (1/MeV)
+    R_rel = convert_R_fm_to_relativistic()
+
+    ! Initialize the weak potential with the new parameter c
+    call potential%init(Z, N, R_rel, c)
+
+    ! Debug print
+    print *, 'rho0 is :', potential%rho0
+    print *, 'Nuclear radius R in relativistic units :', R_rel
+    print *, 'Gfermi rel is : ', Gfermi_relativistic
+    print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
+
+    ! Set filename to read radial functions from (for the 1st order case)
+    filename = '/home/sriman/Documents/Thesis/workspace/programs/rad/radial_function.dat'
+
+    ! -------------------------------------------------------------------------
+    ! If user wants 1st order, do the old code exactly as is
+    ! -------------------------------------------------------------------------
+    if (trim(order_choice) == '1') then
+
+       ! Read the radial functions from the file
+       call read_radial_functions(filename, npoints, r, g, f)
+
+       !------------------------------------------------------
+       ! Compute potential V(r) for each data point (optional).
+       !------------------------------------------------------
+       allocate(V(npoints))
+       V = 0.0d0
+       do i = 1, npoints
+           V(i) = potential%eval(r(i))
+       end do
+
+       !------------------------------------------------------
+       ! E_pot = ∫[0 to R_rel] (g(r)^2 + f(r)^2) * r^2 * V(r) dr
+       ! via Gauss–Legendre with N=40
+       !------------------------------------------------------
+       E_pot = gauss_legendre_integration(0d0, R_rel, npoints, r, g, f, potential, &
+                                          .true.)   ! .true. => use (g^2+f^2)*r^2
+
+       print *, 'E_pot (0 to R) using Gauss–Legendre = ', E_pot, ' in relativistic units'
+
+       ! Deallocate arrays
+       deallocate(r, g, f, V)
+
+    ! -------------------------------------------------------------------------
+    ! Else if user wants 2nd order, do the new integral and energy correction
+    ! -------------------------------------------------------------------------
+    else if (trim(order_choice) == '2') then
+       !---------------------------------------------------------
+       ! NEW: Prompt for the states (e.g. "1s" and "2p") to compute
+       ! the energy denominator in the second-order correction.
+       !---------------------------------------------------------
+       print *, 'Enter the state for the initial energy (e.g., 1s):'
+       read *, state_initial
+       print *, 'Enter the state for the intermediate energy (e.g., 2p, 3p, 4p, ..., 10p):'
+       read *, state_intermediate
+
+       ! Set quantum numbers based on state strings:
+       if (trim(state_initial) == '1s') then
+            n_val = 1.d0
+            j_val = 0.5d0
+       else
+            print *, 'Unknown initial state, defaulting to 1s'
+            n_val = 1.d0
+            j_val = 0.5d0
+       end if
+       ! Calculate E_initial using the given formula:
+       E_initial = mc2 * ( 1.d0 + (Z*alpha)**2 / ( (n_val - j_val - 0.5d0) + &
+     & sqrt((j_val + 0.5d0)**2 - (Z*alpha)**2) ) )**(-0.5d0)
+
+       ! Now set up the intermediate state parameters and read the appropriate file
+       if (trim(state_intermediate) == '2p') then
+            n_val = 2.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '3p') then
+            n_val = 3.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '4p') then
+            n_val = 4.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '5p') then
+            n_val = 5.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '6p') then
+            n_val = 6.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '7p') then
+            n_val = 7.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '8p') then
+            n_val = 8.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '9p') then
+            n_val = 9.d0
+            j_val = 0.5d0
+       else if (trim(state_intermediate) == '10p') then
+            n_val = 10.d0
+            j_val = 0.5d0
+       else
+            print *, 'Unknown intermediate state, defaulting to 2p (p1/2)'
+            state_intermediate = '2p'
+            n_val = 2.d0
+            j_val = 0.5d0
+       end if
+       E_intermediate = mc2 * ( 1.d0 + (Z*alpha)**2 / ( (n_val - j_val - 0.5d0) + sqrt((j_val + 0.5d0)**2 - &
+       &(Z*alpha)**2 ) ) )**(-0.5d0)
+
+       ! Generate filenames dynamically based on the selected states
+       filename_n = '/home/sriman/Documents/Thesis/workspace/programs/rad/polynomial_table_' // trim(state_intermediate) // '.txt'
+       filename_s = '/home/sriman/Documents/Thesis/workspace/programs/rad/polynomial_table_' // trim(state_initial) // '.txt'
+
+       print *, 'Reading wave functions from:'
+       print *, 'Intermediate state (', trim(state_intermediate), '): ', trim(filename_n)
+       print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
+
+       ! Read radial functions for the waves:
+       call read_radial_functions(filename_n, npoints_n, r_n, G_n, F_n)
+       call read_radial_functions(filename_s, npoints_s, r_s, G_s, F_s)
+
+       ! Now compute the matrix element:
+       ! M_n,s ∝ - ∫_0^R dr r^2 rho(r) [G_n(r)*F_s(r) + F_n(r)*G_s(r)]
+       M_n_s = gauss_legendre_integration_2nd(0d0, R_rel, &
+                    npoints_n, r_n, G_n, F_n, &
+                    npoints_s, r_s, G_s, F_s, &
+                    potential)
+
+       ! Include the negative sign from the expression
+       M_n_s = - M_n_s
+
+       print *, 'M_n,s (0 to R) using Gauss–Legendre = ', M_n_s
+
+       !---------------------------------------------------------
+       ! Now calculate and print the second-order energy correction:
+       !   ΔE^(2) = |M_{n,s}|^2 / (E_initial - E_intermediate)
+       !---------------------------------------------------------
+       Delta_E = (M_n_s**2) / (E_initial - E_intermediate)
+       print *, 'For initial state ', trim(state_initial), ' (E = ', E_initial, &
+         ') and intermediate state ', trim(state_intermediate), ' (E = ', E_intermediate, '):'
+       print *, 'Second-order energy correction ΔE^(2) = ', Delta_E
+
+    else
+       print *, 'Invalid order choice. Exiting.'
+       stop
+    end if
+
+contains
+    !----------------------------------------------------------------
+    ! 1) Convert R from fm to relativistic units (1/MeV)
+    !----------------------------------------------------------------
+    double precision function convert_R_fm_to_relativistic()
+        implicit none
+        ! Conversion factor: 1 fm = 1/197 MeV^{-1}
+        double precision, parameter :: conversion_factor = 386.1592
+        convert_R_fm_to_relativistic = R_fm / conversion_factor
+    end function convert_R_fm_to_relativistic
+
+    !----------------------------------------------------------------
+    ! 2) Read radial functions from a file: r, g(r), f(r)
+    !----------------------------------------------------------------
+    subroutine read_radial_functions(filename, npoints, r, g, f)
+        implicit none
+        character(len=*), intent(in) :: filename
+        integer, intent(out) :: npoints
+        double precision, allocatable, intent(out) :: r(:), g(:), f(:)
+
+        integer :: unit_num, ios, i
+        character(len=256) :: line
+
+        open(newunit=unit_num, file=filename, status='old', action='read', iostat=ios)
+        if (ios /= 0) then
+            print *, 'Error opening file: ', filename
+            stop
+        end if
+
+        ! Skip header line
+        read(unit_num, '(A)', iostat=ios) line
+        if (ios /= 0) then
+            print *, 'Error reading header from file: ', filename
+            stop
+        end if
+
+        ! Count lines
+        npoints = 0
+        do
+            read(unit_num, '(A)', iostat=ios) line
+            if (ios /= 0) exit
+            npoints = npoints + 1
+        end do
+
+        rewind(unit_num)
+
+        ! Skip header line again
+        read(unit_num, '(A)', iostat=ios) line
+
+        allocate(r(npoints), g(npoints), f(npoints))
+
+        do i = 1, npoints
+            read(unit_num, *, iostat=ios) r(i), g(i), f(i)
+            if (ios /= 0) then
+                print *, 'Error reading data at line ', i
+                stop
+            end if
+        end do
+
+        close(unit_num)
+    end subroutine read_radial_functions
+
+    !----------------------------------------------------------------
+    ! 3) Gauss–Legendre integration from a to b, using ngl40 (1st-order).
+    !----------------------------------------------------------------
+    function gauss_legendre_integration(a, b, npoints, r_array, g_array, f_array, potential, use_radial_factor) result(Ival)
+        use bspqed_quadrature, only: ngl40, nodes40, weights40
+        implicit none
+
+        ! Inputs:
+        double precision, intent(in) :: a, b
+        integer, intent(in) :: npoints
+        double precision, dimension(npoints), intent(in) :: r_array, g_array, f_array
+        type(weak_potential), intent(in) :: potential
+        logical, intent(in) :: use_radial_factor
+
+        ! Output:
+        double precision :: Ival
+
+        ! Locals:
+        integer :: k, nGL
+        double precision :: sum_val, xm, xr, t, w, r_node
+
+        nGL = ngl40
+        xm  = 0.5d0 * (b + a)
+        xr  = 0.5d0 * (b - a)
+
+        sum_val = 0d0
+        do k = 1, nGL
+            t = nodes40(k)   ! in [-1,1]
+            w = weights40(k)
+            r_node = xm + xr*t
+            sum_val = sum_val + w * integrand(r_node, npoints, r_array, g_array, f_array, potential, use_radial_factor)
+        end do
+
+        Ival = xr * sum_val
+    end function gauss_legendre_integration
+
+    !----------------------------------------------------------------
+    ! 4) integrand(r): used for 1st-order E_pot
+    !----------------------------------------------------------------
+    function integrand(rval, local_npoints, r_array, g_array, f_array, local_potential, use_radial_factor) result(val)
+        implicit none
+        integer, intent(in) :: local_npoints
+        double precision, intent(in) :: rval
+        double precision, dimension(local_npoints), intent(in) :: r_array, g_array, f_array
+        type(weak_potential), intent(in) :: local_potential
+        logical, intent(in) :: use_radial_factor
+        double precision :: val, g_val, f_val, dr, fraction, V_val
+
+        if (rval <= r_array(1)) then
+            g_val = g_array(1)
+            f_val = f_array(1)
+        else if (rval >= r_array(local_npoints)) then
+            g_val = g_array(local_npoints)
+            f_val = f_array(local_npoints)
+        else
+            do iL = 1, local_npoints-1
+                iR = iL + 1
+                if (r_array(iL) <= rval .and. rval < r_array(iR)) exit
+            end do
+            dr = r_array(iR) - r_array(iL)
+            fraction = (rval - r_array(iL)) / dr
+            g_val = g_array(iL) + fraction*(g_array(iR)-g_array(iL))
+            f_val = f_array(iL) + fraction*(f_array(iR)-f_array(iL))
+        end if
+
+        V_val = local_potential%eval(rval)
+        if (use_radial_factor) then
+            val = (g_val*g_val + f_val*f_val) * V_val
+        else
+            val = (g_val * f_val) * V_val
+        end if
+    end function integrand
+
+    !----------------------------------------------------------------
+    ! NEW: Gauss–Legendre integration for the 2nd-order integral
+    !----------------------------------------------------------------
+    function gauss_legendre_integration_2nd(a, b, npoints_n, r_n, G_n, F_n, &
+                                            npoints_s, r_s, G_s, F_s, &
+                                            potential) result(M_val)
+        use bspqed_quadrature, only: ngl40, nodes40, weights40
+        implicit none
+        double precision, intent(in) :: a, b
+        integer, intent(in) :: npoints_n, npoints_s
+        double precision, dimension(npoints_n), intent(in) :: r_n, G_n, F_n
+        double precision, dimension(npoints_s), intent(in) :: r_s, G_s, F_s
+        type(weak_potential), intent(in) :: potential
+        double precision :: M_val
+        integer :: k, nGL
+        double precision :: sum_val, xm, xr, t, w, r_node
+
+        nGL = ngl40
+        xm  = 0.5d0 * (b + a)
+        xr  = 0.5d0 * (b - a)
+        sum_val = 0d0
+        do k = 1, nGL
+            t = nodes40(k)
+            w = weights40(k)
+            r_node = xm + xr*t
+            sum_val = sum_val + w * integrand_2nd(r_node, npoints_n, r_n, G_n, F_n, &
+                                                 npoints_s, r_s, G_s, F_s, &
+                                                 potential)
+        end do
+        M_val = xr * sum_val
+    end function gauss_legendre_integration_2nd
+
+    !----------------------------------------------------------------
+    ! integrand_2nd(r): returns rho(r)*[G_n(r)*F_s(r) + F_n(r)*G_s(r)]
+    ! (with r^2 implicitly included if G, F are r*g, r*f).
+    !----------------------------------------------------------------
+    function integrand_2nd(rval, npoints_n, r_n, G_n, F_n, &
+                           npoints_s, r_s, G_s, F_s, &
+                           local_potential) result(val2)
+        implicit none
+        integer, intent(in) :: npoints_n, npoints_s
+        double precision, intent(in) :: rval
+        double precision, dimension(npoints_n),  intent(in) :: r_n, G_n, F_n
+        double precision, dimension(npoints_s), intent(in) :: r_s, G_s, F_s
+        type(weak_potential), intent(in) :: local_potential
+        double precision :: val2
+        double precision :: Gn_val, Fn_val, Gs_val, Fs_val
+        double precision :: dr, fraction, rho_val
+        integer :: iL, iR
+
+        if (rval <= r_n(1)) then
+            Gn_val = G_n(1)
+            Fn_val = F_n(1)
+        else if (rval >= r_n(npoints_n)) then
+            Gn_val = G_n(npoints_n)
+            Fn_val = F_n(npoints_n)
+        else
+            do iL = 1, npoints_n-1
+                iR = iL + 1
+                if (r_n(iL) <= rval .and. rval < r_n(iR)) exit
+            end do
+            dr = r_n(iR) - r_n(iL)
+            fraction = (rval - r_n(iL)) / dr
+            Gn_val = G_n(iL) + fraction*(G_n(iR)-G_n(iL))
+            Fn_val = F_n(iL) + fraction*(F_n(iR)-F_n(iL))
+        end if
+
+        if (rval <= r_s(1)) then
+            Gs_val = G_s(1)
+            Fs_val = F_s(1)
+        else if (rval >= r_s(npoints_s)) then
+            Gs_val = G_s(npoints_s)
+            Fs_val = F_s(npoints_s)
+        else
+            do iL = 1, npoints_s-1
+                iR = iL + 1
+                if (r_s(iL) <= rval .and. rval < r_s(iR)) exit
+            end do
+            dr = r_s(iR) - r_s(iL)
+            fraction = (rval - r_s(iL)) / dr
+            Gs_val = G_s(iL) + fraction*(G_s(iR)-G_s(iL))
+            Fs_val = F_s(iL) + fraction*(F_s(iR)-F_s(iL))
+        end if
+
+        rho_val = local_potential%eval(rval)
+        val2 = rho_val * (Gn_val*Fs_val + Fn_val*Gs_val)
+    end function integrand_2nd
+
+end program compute_radial_integrals
+

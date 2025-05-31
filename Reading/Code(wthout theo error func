@@ -1,0 +1,180 @@
+print_polynomial_table
+    use bspqed_dkb
+    use bspwf_knots
+    use bspqed_coefficients
+    use bspqed_utilities, only: meanr
+    use bspqed_potentials
+    use bspqed_quadrature
+    implicit none
+
+    ! Declare variables
+    integer :: order, kappa, inbv, ninside, knot_count, nmain
+    integer :: i, unit_num, iostat
+    double precision :: gx, fx, x
+    double precision, parameter :: speed_of_light = 137.035999
+    double precision, allocatable :: knots(:), coefs(:), nodes(:), weights(:)
+    double precision :: rnucl, rcavity, zalpha, znucl, alpha, rms
+    double precision :: electron_reduced_compton
+    double precision :: x_start, x_end, x_step
+    integer :: nknots, nbspl, nintervals, ngl, nspectrum
+    integer :: idx_min
+    double precision :: min_energy
+    character(len=100) :: filename
+    double precision, allocatable :: spectrum(:)
+    double precision, allocatable :: coefmat(:,:)
+    type(sphere_potential) :: potential
+
+    ! Constants
+    alpha = 1.0d0 / 137.035999
+    rms = 0.87d0
+    electron_reduced_compton = 386.1592d0
+    order = 9
+    inbv = 1
+
+    ! Prompt user for input values
+    print *, 'Enter the value for znucl:'
+    read *, znucl
+    print *, 'Enter the value for kappa:'
+    read *, kappa
+    print *, 'Enter the number of points inside the nuclear radius (ninside):'
+    read *, ninside
+    print *, 'Enter the value for principal quantum number:'
+    read *, nmain
+
+    ! Validate input parameters
+    if (znucl <= 0.0d0) then
+        print *, 'Error: znucl must be positive.'
+        stop
+    endif
+    if (ninside <= 0) then
+        print *, 'Error: ninside must be positive.'
+        stop
+    endif
+
+    ! Initialize parameters
+    zalpha = znucl * alpha
+    rnucl = sqrt(5.0d0 / 3.0d0) * rms / electron_reduced_compton
+    rcavity = meanr(zalpha, kappa, nmain) * 100.0d0
+
+    ! Determine the size of the knots and coefs arrays
+    knot_count = ninside + (order - 1) * 2
+    allocate(knots(knot_count))
+    call knots_01(rnucl, rcavity, ninside, order, knots)
+    nknots = size(knots)
+    nbspl = nknots - order
+    nintervals = nknots - 2 * (order - 1) - 1
+
+    ! Allocate arrays
+    allocate(coefs(2 * nbspl))
+
+    ! Set up Gauss-Legendre quadrature
+    ngl = ngl20   ! Use 20-point quadrature
+    allocate(nodes(ngl), weights(ngl))
+    nodes = nodes20
+    weights = weights20
+
+    ! Allocate spectrum and coefficient matrix
+    nspectrum = 2 * (nbspl - 2)
+    allocate(spectrum(nspectrum))
+    allocate(coefmat(2 * nbspl, nspectrum))
+
+    ! Initialize the potential
+    potential%zalpha = zalpha
+    potential%rad = rnucl
+
+    ! Call the solve subroutine to compute the coefficients
+    call solve(knots, order, kappa, potential, nodes, weights, spectrum, coefmat)
+
+!/* -------------------------------------------------------------------------- */
+!/*             Purpose of the Solve Subroutine                               */
+!/* --------------------------------------------------------------------------*/
+!The Solve subroutine performs 4 tasks 
+!A. Construts the Hamiltonian matrix : B spline basis functions tp represent Dirac equation in matrix form
+!B. Construct the overlap matrix : represents the overlap between the B spline basis functions
+    
+!C. Solves general Eigenvaue problem : Find Eigenavalues(spectrum) and corresponding Eigenvectors(coefmat) of the Hamiltonian matrix
+!D. Outputs the Energy spectrum and the coefficients: Spectrum  : array  of energy eigenvalues, Coefmat : array of coefficients of the eigenvectors
+!It does it by the following steps 
+!1. Construct the B-spline basis functions : B splines are piecewise polynomia functions defined over a knot sequence.Flexible and efficient for representing functions with local support.
+!2. Assemble the Hamiltonian Matrix (H) : Hij is computed using integrals involving B splines basis and potential of dirac equation
+!                                           H = c/alpha *p + /beta *m*c^2 + V(r)   
+!3. Assemble the Overlap Matrix (S) : Sij is computed using integrals involving B splines basis functions
+    !                              S_ij = integral of B_i(x) * B_j(x) dx , B splines are usually not orthogonal
+!4. Use Gauss-Legendre quadrature to compute the integrals
+    ! for each interhval between knots the integral is computed using 
+    ! integral of B_i(x) * B_j(x) dx(between 2 limits which are non zero and non infinity) = sum over k=1 to ngl of B_i(x_k) * B_j(x_k) * w_k
+
+    ! ngl  is number of Gauss legendre points
+    !w_k and x_k are the weights and nodes of the Gauss legendre quadrature
+    
+
+
+    ! Select the eigenvector corresponding to the state of interest
+
+
+    min_energy = spectrum(1)
+    idx_min = 1
+    do i = 2, nspectrum
+        if (spectrum(i) < min_energy) then
+            min_energy = spectrum(i)
+            idx_min = i
+        end if
+    end do
+
+    ! Update the coefficients with the selected eigenvector
+    coefs = coefmat(:, idx_min)
+
+    ! Normalize the coefficients
+    coefs = coefs / sqrt(sum(coefs**2))
+
+    ! Output filename and unit number
+    unit_num = 10
+    filename = 'polynomial_table.txt'
+
+    ! Open the file for writing with error checking
+    open(unit=unit_num, file=filename, status='replace', action='write', &
+        iostat=iostat)
+    if (iostat /= 0) then
+        print *, 'Error opening file: ', filename
+        stop
+    else
+        print *, 'File opened successfully: ', filename
+    endif
+
+    ! Write header to file and console
+    write(unit_num, *) "   x          RadialG(x)         RadialF(x)"
+    write(unit_num, *) "-----------------------------------------------"
+    print *, "   x          RadialG(x)         RadialF(x)"
+    print *, "-----------------------------------------------"
+
+    ! Initialize loop variables
+    x_start = 0.001
+    x_end = knots(size(knots) - order)
+    x_step = 0.00001
+
+
+
+    !/* -------------------------------------------------------------------------- */
+    !/*                  Loop to calculate radialg and radialf                     */
+    !/* -------------------------------------------------------------------------- */
+    x = x_start
+    do while (x <= x_end)
+        gx = radialg(knots, order, kappa, coefs, x, inbv)
+        fx = radialf(knots, order, kappa, coefs, x, inbv)
+        write(unit_num, '(F10.5, 3X, E15.8, 3X, E15.8)') x, gx, fx
+        print '(F10.5, 3X, E15.8, 3X, E15.8)', x, gx, fx
+        x = x + x_step
+    end do
+
+    ! Close the file
+    close(unit_num)
+
+    ! Deallocate arrays
+    deallocate(knots)
+    deallocate(coefs)
+    deallocate(nodes)
+    deallocate(weights)
+    deallocate(spectrum)
+    deallocate(coefmat)
+
+end program print_polynomial_table

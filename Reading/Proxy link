@@ -1,0 +1,34 @@
+
+!/* -------------------------------------------------------------------------- */
+!/*             Purpose of the Solve Subroutine                               */
+!/* --------------------------------------------------------------------------*/
+!The Solve subroutine performs 4 tasks 
+!A. Construts the Hamiltonian matrix : B spline basis functions to represent Dirac equation in matrix form
+!B. Construct the overlap matrix : represents the overlap between the B spline basis functions
+    
+!C. Solves general Eigenvaue problem : Find Eigenavalues(spectrum) and corresponding Eigenvectors(coefmat) of the Hamiltonian matrix
+!D. Outputs the Energy spectrum and the coefficients: Spectrum  : array  of energy eigenvalues, Coefmat : array of coefficients of the eigenvectors
+!It does it by the following steps 
+!1. Construct the B-spline basis functions : B splines are piecewise polynomia functions defined over a knot sequence.Flexible and efficient for representing functions with local support.
+!2. Assemble the Hamiltonian Matrix (H) : Hij is computed using integrals involving B splines basis and potential of dirac equation
+!                                           H = c/alpha *p + /beta *m*c^2 + V(r)   
+!3. Assemble the Overlap Matrix (S) : Sij is computed using integrals involving B splines basis functions
+    !                              S_ij = integral of B_i(x) * B_j(x) dx , B splines are usually not orthogonal
+!4. Use Gauss-Legendre quadrature to compute the integrals
+    ! for each interhval between knots the integral is computed using 
+    ! integral of B_i(x) * B_j(x) dx(between 2 limits which are non zero and non infinity) = sum over k=1 to ngl of B_i(x_k) * B_j(x_k) * w_k
+
+    ! ngl  is number of Gauss legendre points
+    !w_k and x_k are the weights and nodes of the Gauss legendre quadrature
+    
+
+!  Explantion of what we are trying to achieve introducing the theoretical energy function
+
+! When we solve the dirac equation numerically using the B-spline basis functions we get :
+    !a spectrum of energy eigenvalues( array spectrum) 
+    ! corresponding Eigenvectors( array coefmat)
+! Each eigenvalue represents a possible energy level of the electron in the atom 
+! Each Eigenvector contains the coefficients needed to reconstruct the radial wave function(G(x) and F(x)) of the electron in the atom
+! However due to numerical approximations and the finite basis set, energies computed numerically might not exactly match the theoretical energies predicted by the analytical formulas
+! Hence to ensure you are looking at the correct quantum state ( nmain) we need a method to  select the correct eigenvalue from the numerical spectrum that best corresponds with theoretical energy for that state
+

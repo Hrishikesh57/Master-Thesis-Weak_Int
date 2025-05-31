@@ -1,0 +1,3 @@
+Z    RMS_Radius(fm)    Energy(natural units)
+   92       5.857100    9.4197671628E-001
+   92       5.857100    9.4197671628E-001

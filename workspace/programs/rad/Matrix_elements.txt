@@ -1,0 +1,3 @@
+Element                              Initial State    Intermediate state          Matrix Element 
+   Z = 6 (Li like Carbon )              2s                 3s                  8.5011558016006974E-017
+   Z = 14 (Ne like Silicon)             3s                 4s                  1.0651978536486002E-018
