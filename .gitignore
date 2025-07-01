@@ -1,9 +1,15 @@
+# filepath: /home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/.gitignore
 # ============================
-# Fortran build artifacts
+# Fortran/C build artifacts
 # ============================
 *.o
 *.mod
+*.a
+*.so
 *.exe
+
+# Executable directories
+/workspace/programs/*/bin/
 
 # ============================
 # Python caches & venv
@@ -23,3 +29,8 @@ env/
 # VS Code / IDE settings
 # ============================
 .vscode/
+
+# ============================
+# Personal Files
+# ============================
+/Reading/*.pdf
