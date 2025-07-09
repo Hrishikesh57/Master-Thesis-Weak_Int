@@ -6,18 +6,22 @@ program dhfc
     use bspwf_hartree_fock, only: dhfc_dir_matrix, dhfc_matrix
     use bspwf_knots, only: knots_01
     use bspwf_potentials, only: fermi_potential
-    use bspwf_quadrature, only: nodes10, weights10
+    use bspqed_quadrature, only: nodes20, weights20
+    use bspqed_dkb, only: radialg, radialf
+    use bspqed_physconsts, only: alpha, electron_reduced_compton
+    use bspqed_utilities, only: kntseq1
+    use bspqed_potentials, only: sphere_potential
     implicit none
 
     double precision, parameter :: pi = 4.0d0 * atan(1.0d0)
 
     double precision, dimension(:, :), allocatable :: core_coefficients, valence_coefficients
     double precision, dimension(:), allocatable :: knots, core_energies, valence_energies
-    double precision :: rms, afermi, cfermi, rcavity, epsb, ecore_total, epsv
+    double precision :: rms, zalpha, rnucl, rcavity, epsb, ecore_total, epsv
     real :: start, finish
     integer, dimension(:), allocatable :: core_kappas, core_nmains, valence_kappas, valence_nmains
     integer :: znucl, ncores, nvalences, i, order, npoints, nknots, nbsplines, kapb, nmnb, kapv, nmnv
-    type(fermi_potential) :: nuclpot
+    type(sphere_potential) :: nuclpot
 
     read (*, *) znucl
     read (*, *) rms
@@ -51,23 +55,30 @@ program dhfc
     end do
     write (*, *) "# ", repeat("-", 86)
 
-    order = 6
-    npoints = 36
+    ! Use same setup as practise.f90
+    order = 9
+    zalpha = znucl * alpha
+    
+    ! Define the nuclear radius for a uniform sphere
+    rnucl = sqrt(5.0d0/3.0d0) * rms / electron_reduced_compton
+    
+    ! Choose a cavity (box) radius in natural units
+    rcavity = 2.5d0 / alpha
+    
+    ! B-spline grid
+    npoints = 1000
     nknots = npoints + 2 * (order - 1)
     nbsplines = nknots - order
 
     allocate (knots(nknots))
     knots = 0.0d0
+    
+    call kntseq1(rnucl, rcavity, npoints/10, order, knots)
+    if (knots(1) <= 0.0d0) knots(1) = 1.0d-6
 
-    afermi = 2.3d0 / (4.0d0 * log(3.0d0)) / bohr_radius
-    cfermi = sqrt((5.0d0 * rms**2 - 7.0d0 * (pi * afermi)**2) / 3.0d0) / bohr_radius
-
-    rcavity = 40.0d0
-    call knots_01(cfermi, rcavity, npoints/10, order, knots)
-
-    nuclpot%znucl = znucl
-    nuclpot%a = afermi
-    nuclpot%c = cfermi
+    ! Define the nuclear potential
+    nuclpot%zalpha = zalpha
+    nuclpot%rad = rnucl
 
     allocate (core_energies(ncores))
     core_energies = 0.0d0
@@ -76,7 +87,7 @@ program dhfc
     core_coefficients = 0.0d0
 
     call cpu_time(start)
-    call starting_solutions(knots, order, nuclpot, core_kappas, core_nmains, nodes10, weights10, core_energies,&
+    call starting_solutions(knots, order, nuclpot, core_kappas, core_nmains, nodes20, weights20, core_energies,&
     & core_coefficients, print_output=.true.)
     call cpu_time(finish)
 
@@ -94,7 +105,7 @@ program dhfc
     write (*, *) "# ", repeat("-", 86)
 
     call cpu_time(start)
-    call refining_solutions(knots, order, nuclpot, core_kappas, core_nmains, nodes10, weights10, core_energies,&
+    call refining_solutions(knots, order, nuclpot, core_kappas, core_nmains, nodes20, weights20, core_energies,&
     & core_coefficients, print_output=.true.)
     call cpu_time(finish)
 
@@ -111,12 +122,27 @@ program dhfc
     end do
     write (*, *) "# ", repeat("-", 86)
 
-    ecore_total = total_core_energy(knots, order, core_kappas, core_energies, core_coefficients, nodes10,&
-    & weights10)
+    ecore_total = total_core_energy(knots, order, core_kappas, core_energies, core_coefficients, nodes20,&
+    & weights20)
 
     write (*, *) "# ", repeat("-", 86)
     write (*, *) "# Total core energy: ", ecore_total
     write (*, *) "# ", repeat("-", 86)
+
+    ! Print core wavefunctions (multi-electron)
+    write (*, '(A)') "# *** ABOUT TO CALL print_wavefunctions FOR CORE ***"
+    write (*, '(A,I0,A,I0)') "# Core coefficients size: ", size(core_coefficients, 1), "x", size(core_coefficients, 2)
+    write (*, '(A,999I5)') "# Core kappas: ", core_kappas
+    write (*, '(A,999I5)') "# Core nmains: ", core_nmains
+    write (*, '(A,999ES12.5)') "# Core energies: ", core_energies
+    
+    ! Force output before calling subroutine
+    call flush(6)
+    
+    call print_wavefunctions(knots, order, core_coefficients, core_kappas, core_nmains, core_energies, "core")
+    
+    write (*, '(A)') "# *** FINISHED CALLING print_wavefunctions FOR CORE ***"
+    call flush(6)
 
     allocate (valence_energies(nvalences))
     valence_energies = 0.0d0
@@ -125,7 +151,7 @@ program dhfc
     valence_coefficients = 0.0d0
 
     call valence_solutions(knots, order, nuclpot, core_kappas, core_coefficients, valence_kappas, valence_nmains,&
-    & nodes10, weights10, valence_energies, valence_coefficients)
+    & nodes20, weights20, valence_energies, valence_coefficients)
 
     write (*, *) "# ", repeat("-", 86)
     write (*, *) "# Energies of the valence states are ..."
@@ -136,7 +162,26 @@ program dhfc
         epsv = valence_energies(i)
         write (*, *) nmnv, kapv, epsv
     end do
+    write (*, *) "# ", repeat("-", 86)
+
+    ! Print valence wavefunctions (in multi-electron field)
+    write (*, '(A)') "# *** ABOUT TO CALL print_wavefunctions FOR VALENCE ***"
+    write (*, '(A,I0,A,I0)') "# Valence coefficients size: ", size(valence_coefficients, 1), "x", size(valence_coefficients, 2)
+    write (*, '(A,999I5)') "# Valence kappas: ", valence_kappas
+    write (*, '(A,999I5)') "# Valence nmains: ", valence_nmains
+    write (*, '(A,999ES12.5)') "# Valence energies: ", valence_energies
+    
+    ! Force output before calling subroutine
+    call flush(6)
+    
+    call print_wavefunctions(knots, order, valence_coefficients, valence_kappas, valence_nmains, valence_energies, "valence")
+    
+    write (*, '(A)') "# *** FINISHED CALLING print_wavefunctions FOR VALENCE ***"
+    call flush(6)
+
     write (*, *) "# ", repeat("=", 86)
+    write (*, *) "# PROGRAM COMPLETED SUCCESSFULLY"
+    call flush(6)
 
     return
 
@@ -476,6 +521,139 @@ contains
 
         return
     end subroutine valence_solutions
+
+    subroutine print_wavefunctions(knots, order, coefficients, kappas, nmains, energies, label)
+        double precision, dimension(:), intent(in) :: knots
+        integer, intent(in) :: order
+        integer, dimension(:), intent(in) :: kappas, nmains
+        double precision, dimension(:, :), intent(in) :: coefficients
+        double precision, dimension(:), intent(in) :: energies
+        character(len=*), intent(in) :: label
+        
+        double precision :: x, gx, fx, x_start, x_end, x_step
+        integer :: i, j, npoints_output, inbv, nstates, unit_num, iostat
+        character(len=100) :: filename
+        
+        ! Use explicit format for better output control
+        write(*, '(A)') "# ========================================="
+        write(*, '(A)') "# ENTERING print_wavefunctions subroutine"
+        write(*, '(A)') "# ========================================="
+        write(*, '(A,A)') "# Label: ", trim(label)
+        write(*, '(A,I0)') "# znucl = ", znucl
+        call flush(6)
+        
+        nstates = size(kappas)
+        write(*, '(A,I0)') "# Number of states to process: ", nstates
+        
+        if (nstates <= 0) then
+            write(*, '(A)') "# ERROR: No states to process!"
+            call flush(6)
+            return
+        endif
+        
+        npoints_output = 1000
+        x_start = 1.0d-6
+        x_end = 20.0d0
+        x_step = (x_end - x_start) / (npoints_output - 1)
+        
+        write(*, '(A,A,A)') "# Writing ", trim(label), " wavefunctions to files..."
+        write(*, '(A,I0,A)') "# Will create ", nstates, " files"
+        
+        ! Check if arrays are properly allocated
+        if (size(coefficients, 1) == 0) then
+            write(*, '(A)') "# ERROR: coefficients array is empty!"
+            call flush(6)
+            return
+        endif
+        
+        write(*, '(A,I0,A,I0)') "# Coefficient matrix size: ", size(coefficients, 1), "x", size(coefficients, 2)
+        call flush(6)
+        
+        ! Print wavefunctions for each state
+        do j = 1, nstates
+            write(*, '(A)') "# ==============================================="
+            write(*, '(A,I0,A,I0)') "# Processing state ", j, " of ", nstates
+            write(*, '(A,I0,A,I0,A,ES12.5)') "# n=", nmains(j), " kappa=", kappas(j), " E=", energies(j)
+            call flush(6)
+            
+            ! Create filename for each state
+            write(filename, '(I0,A,A,I0,A,I0,A)') znucl, '_', trim(label), '_n', nmains(j), '_kappa', kappas(j), '.txt'
+            
+            write(*, '(A,A,A)') "# Creating file: ", trim(filename), ""
+            call flush(6)
+            
+            unit_num = 20 + j
+            
+            ! Try to open the file
+            open(unit=unit_num, file=filename, status='replace', action='write', iostat=iostat)
+            
+            if (iostat /= 0) then
+                write(*, '(A,A)') '# ERROR: Could not create file: ', trim(filename)
+                write(*, '(A,I0)') '# IOSTAT = ', iostat
+                call flush(6)
+                cycle
+            endif
+            
+            write(*, '(A,A)') '# File opened successfully: ', trim(filename)
+            call flush(6)
+            
+            ! Write file header
+            write(unit_num, '(A)') '# Multi-electron Dirac-Hartree-Fock wavefunction'
+            write(unit_num, '(A,I0,A,I0,A,ES15.8)') '# n=', nmains(j), ' kappa=', kappas(j), ' E=', energies(j)
+            write(unit_num, '(A)') '# r (natural units, 1/MeV)    g_nk(r)           f_nk(r)'
+            
+            ! Test the first point
+            x = x_start
+            inbv = 1
+            
+            write(*, '(A,ES12.5)') '# Testing functions at r=', x
+            call flush(6)
+            
+            gx = radialg(knots, order, kappas(j), coefficients(:,j), x, inbv)
+            fx = radialf(knots, order, kappas(j), coefficients(:,j), x, inbv)
+            
+            write(*, '(A,ES12.5,A,ES12.5,A,ES12.5)') '# Test: r=', x, ' g=', gx, ' f=', fx
+            call flush(6)
+            
+            ! Write all data points
+            write(*, '(A,I0,A)') '# Writing ', npoints_output, ' points to file...'
+            call flush(6)
+            
+            do i = 1, npoints_output
+                x = x_start + (i - 1) * x_step
+                inbv = 1
+                gx = radialg(knots, order, kappas(j), coefficients(:,j), x, inbv)
+                fx = radialf(knots, order, kappas(j), coefficients(:,j), x, inbv)
+                
+                write(unit_num, '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)') x, gx, fx
+            end do
+            
+            close(unit_num)
+            write(*, '(A,A)') '# File completed: ', trim(filename)
+            write(*, '(A,I0,A)') '# Contains ', npoints_output, ' data points'
+            
+            ! Print sample data to terminal
+            write(*, '(A)') '# Sample data (first 3 points):'
+            write(*, '(A)') '#    r            g(r)             f(r)'
+            do i = 1, 3
+                x = x_start + (i - 1) * x_step
+                inbv = 1
+                gx = radialg(knots, order, kappas(j), coefficients(:,j), x, inbv)
+                fx = radialf(knots, order, kappas(j), coefficients(:,j), x, inbv)
+                write(*, '(A,F8.6,2X,ES12.5E2,2X,ES12.5E2)') '#  ', x, gx, fx
+            end do
+            write(*, '(A)') "# -----------------------------------------------"
+            call flush(6)
+        end do
+        
+        write(*, '(A)') "# ========================================="
+        write(*, '(A,A,A)') "# All ", trim(label), " files created successfully!"
+        write(*, '(A)') "# Files are in current working directory"
+        write(*, '(A)') "# EXITING print_wavefunctions subroutine"
+        write(*, '(A)') "# ========================================="
+        call flush(6)
+        return
+    end subroutine print_wavefunctions
 
     subroutine hartree_fock_matrix(kappa, core_kappas, core_coefficients, nodes, weights, hfmat)
         integer, intent(in) :: kappa

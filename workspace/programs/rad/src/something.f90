@@ -35,191 +35,328 @@ program compute_radial_integrals
     character(len=10) :: z_str ! To format Z in filename
     logical :: file_exists ! To check if output file exists
 
+    ! NEW: For amplitude vs energy choice
+    character(len=20) :: main_choice, amplitude_choice
+
+    ! NEW: For weak amplitude calculations
+    character(len=20) :: state_final
+    character(len=256) :: filename_f
+    integer :: npoints_f
+    double precision, allocatable :: r_f(:), G_f(:), F_f(:)
+    double precision :: R_ik, R_kf
+    character(len=256) :: weak_amplitude_filename
+
     ! --------------------------------------------------------------
-    ! Prompt for 1st or 2nd order (added code, no original lines removed)
+    ! NEW: Prompt for energy corrections or amplitudes
     ! --------------------------------------------------------------
-    print *, 'Do you want 1st-order or 2nd-order energy corrections? (enter 1 or 2)'
-    read *, order_choice
+    print *, 'Do you want to calculate energy corrections or amplitudes? (enter energy or amplitudes)'
+    read *, main_choice
 
-    ! Prompt user for atomic number Z, N, and R in fm
-    print *, 'Enter atomic number Z (e.g., 92 for Uranium):'
-    read *, Z
-    print *, 'Enter number of neutrons N (e.g., 146 for Uranium):'
-    read *, N
-    print *, 'Enter nuclear radius R in fm (e.g., 5.8571 for Uranium):'
-    read *, R_fm
+    ! --------------------------------------------------------------
+    ! Branch based on main choice
+    ! --------------------------------------------------------------
+    if (trim(main_choice) == 'energy') then
+        ! --------------------------------------------------------------
+        ! Prompt for 1st or 2nd order (existing code)
+        ! --------------------------------------------------------------
+        print *, 'Do you want 1st-order or 2nd-order energy corrections? (enter 1 or 2)'
+        read *, order_choice
 
+        ! Prompt user for atomic number Z, N, and R in fm
+        print *, 'Enter atomic number Z (e.g., 92 for Uranium):'
+        read *, Z
+        print *, 'Enter number of neutrons N (e.g., 146 for Uranium):'
+        read *, N
+        print *, 'Enter nuclear radius R in fm (e.g., 5.8571 for Uranium):'
+        read *, R_fm
 
+        ! Convert R from fm to relativistic units (1/MeV)
+        R_rel = convert_R_fm_to_relativistic()
 
-    ! Convert R from fm to relativistic units (1/MeV)
-    R_rel = convert_R_fm_to_relativistic()
+        ! Initialize the weak potential with the new parameter c
+        call potential%init(Z, N, R_rel, c)
 
-    ! Initialize the weak potential with the new parameter c
-    call potential%init(Z, N, R_rel, c)
+        ! Debug print
+        print *, 'rho0 is :', potential%rho0
+        print *, 'Nuclear radius R in relativistic units :', R_rel
+        print *, 'Gfermi rel is : ', Gfermi_relativistic
+        print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
 
-    ! Debug print
-    print *, 'rho0 is :', potential%rho0
-    print *, 'Nuclear radius R in relativistic units :', R_rel
-    print *, 'Gfermi rel is : ', Gfermi_relativistic
-    print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
+        ! Set filename to read radial functions from (for the 1st order case)
+        filename = './radial_function.dat'
 
-    ! Set filename to read radial functions from (for the 1st order case)
-    filename = '/home/sriman/Documents/Thesis/workspace/programs/rad/radial_function.dat'
+        ! -------------------------------------------------------------------------
+        ! If user wants 1st order, do the old code exactly as is
+        ! -------------------------------------------------------------------------
+        if (trim(order_choice) == '1') then
 
-    ! -------------------------------------------------------------------------
-    ! If user wants 1st order, do the old code exactly as is
-    ! -------------------------------------------------------------------------
-    if (trim(order_choice) == '1') then
+           ! Read the radial functions from the file
+           call read_radial_functions(filename, npoints, r, g, f)
 
-       ! Read the radial functions from the file
-       call read_radial_functions(filename, npoints, r, g, f)
+           !------------------------------------------------------
+           ! Compute potential V(r) for each data point (optional).
+           !------------------------------------------------------
+           allocate(V(npoints))
+           V = 0.0d0
+           do i = 1, npoints
+               V(i) = potential%eval(r(i))
+           end do
 
-       !------------------------------------------------------
-       ! Compute potential V(r) for each data point (optional).
-       !------------------------------------------------------
-       allocate(V(npoints))
-       V = 0.0d0
-       do i = 1, npoints
-           V(i) = potential%eval(r(i))
-       end do
+           !------------------------------------------------------
+           ! E_pot = ∫[0 to R_rel] (g(r)^2 + f(r)^2) * r^2 * V(r) dr
+           ! via Gauss–Legendre with N=40
+           !------------------------------------------------------
+           E_pot = gauss_legendre_integration(0d0, R_rel, npoints, r, g, f, potential, &
+                                              .true.)   ! .true. => use (g^2+f^2)*r^2
 
-       !------------------------------------------------------
-       ! E_pot = ∫[0 to R_rel] (g(r)^2 + f(r)^2) * r^2 * V(r) dr
-       ! via Gauss–Legendre with N=40
-       !------------------------------------------------------
-       E_pot = gauss_legendre_integration(0d0, R_rel, npoints, r, g, f, potential, &
-                                          .true.)   ! .true. => use (g^2+f^2)*r^2
+           print *, 'E_pot (0 to R) using Gauss–Legendre = ', E_pot, ' in relativistic units'
 
-       print *, 'E_pot (0 to R) using Gauss–Legendre = ', E_pot, ' in relativistic units'
+           ! Deallocate arrays
+           deallocate(r, g, f, V)
 
-       ! Deallocate arrays
-       deallocate(r, g, f, V)
+        ! -------------------------------------------------------------------------
+        ! Else if user wants 2nd order, do the new integral and energy correction
+        ! -------------------------------------------------------------------------
+        else if (trim(order_choice) == '2') then
+           !---------------------------------------------------------
+           ! Prompt for the states (e.g., 1s, 2s) to compute
+           ! the energy denominator in the second-order correction.
+           !---------------------------------------------------------
+           print *, 'Enter the state for the initial energy (e.g., 1s, 2s):'
+           read *, state_initial
+           print *, 'Enter the state for the intermediate energy (e.g., 2p, 3p, 4p, ..., 10p):'
+           read *, state_intermediate
 
-    ! -------------------------------------------------------------------------
-    ! Else if user wants 2nd order, do the new integral and energy correction
-    ! -------------------------------------------------------------------------
-    else if (trim(order_choice) == '2') then
-       !---------------------------------------------------------
-       ! Prompt for the states (e.g., 1s, 2s) to compute
-       ! the energy denominator in the second-order correction.
-       !---------------------------------------------------------
-       print *, 'Enter the state for the initial energy (e.g., 1s, 2s):'
-       read *, state_initial
-       print *, 'Enter the state for the intermediate energy (e.g., 2p, 3p, 4p, ..., 10p):'
-       read *, state_intermediate
+           !---------------------------------------------------------
+           ! Prompt for the actual energy values
+           !---------------------------------------------------------
+           print *, 'Enter the energy for the initial state (', trim(state_initial), ') in relativistic units:'
+           read *, E_initial
+           print *, 'Enter the energy for the intermediate state (', trim(state_intermediate), ') in relativistic units:'
+           read *, E_intermediate
 
-       !---------------------------------------------------------
-       ! Prompt for the actual energy values
-       !---------------------------------------------------------
-       print *, 'Enter the energy for the initial state (', trim(state_initial), ') in relativistic units:'
-       read *, E_initial
-       print *, 'Enter the energy for the intermediate state (', trim(state_intermediate), ') in relativistic units:'
-       read *, E_intermediate
+        !Always use fixed values for energies (no special fork)
+        !    select case (trim(state_initial))
+        !    case ('1s')
+        !        E_initial = 0.74152412753477781d0
+        !    case ('2s')
+        !        E_initial = 0.93311595815167880d0
+        !    case default
+        !        print *, 'Unknown initial state, defaulting to 1s'
+        !        E_initial = 1.0d0
+        !    end select
 
-    !Always use fixed values for energies (no special fork)
-    !    select case (trim(state_initial))
-    !    case ('1s')
-    !        E_initial = 0.74152412753477781d0
-    !    case ('2s')
-    !        E_initial = 0.93311595815167880d0
-    !    case default
-    !        print *, 'Unknown initial state, defaulting to 1s'
-    !        E_initial = 1.0d0
-    !    end select
+        !    select case (trim(state_intermediate))
+        !    case ('2p')
+        !        E_intermediate = 0.93305061918473864d0
+        !    case ('2p3')
+        !         E_intermediate = 0.94197671628375501d0
+        !    case ('3p')
+        !        E_intermediate = 0.97129559739544835d0
+        !    case ('4p')
+        !        E_intermediate = 0.98427844487291205d0
+        !    case ('5p')
+        !        E_intermediate = 0.99012334249205169d0
+        !    case ('6p')
+        !        E_intermediate = 0.99323248359537508d0
+        !    case ('7p')
+        !        E_intermediate = 0.99507764832056722d0
+        !    case ('8p')
+        !        E_intermediate = 0.99626055954639836d0
+        !    case ('9p')
+        !        E_intermediate = 0.99706371585576403d0
+        !    case ('10p')
+        !        E_intermediate = 0.99763994924249344d0
+        !    case ('11p')
+        !         E_intermediate = 0.99814020802280712d0
+        !    case ('12p')
+        !         E_intermediate = 0.99872729278951022d0
+        !    case default
+        !        print *, 'Unknown intermediate state, defaulting to 2p'
+        !        state_intermediate = '2p'
+        !        E_intermediate = 3.0d0
+        !    end select
 
-    !    select case (trim(state_intermediate))
-    !    case ('2p')
-    !        E_intermediate = 0.93305061918473864d0
-    !    case ('2p3')
-    !         E_intermediate = 0.94197671628375501d0
-    !    case ('3p')
-    !        E_intermediate = 0.97129559739544835d0
-    !    case ('4p')
-    !        E_intermediate = 0.98427844487291205d0
-    !    case ('5p')
-    !        E_intermediate = 0.99012334249205169d0
-    !    case ('6p')
-    !        E_intermediate = 0.99323248359537508d0
-    !    case ('7p')
-    !        E_intermediate = 0.99507764832056722d0
-    !    case ('8p')
-    !        E_intermediate = 0.99626055954639836d0
-    !    case ('9p')
-    !        E_intermediate = 0.99706371585576403d0
-    !    case ('10p')
-    !        E_intermediate = 0.99763994924249344d0
-    !    case ('11p')
-    !         E_intermediate = 0.99814020802280712d0
-    !    case ('12p')
-    !         E_intermediate = 0.99872729278951022d0
-    !    case default
-    !        print *, 'Unknown intermediate state, defaulting to 2p'
-    !        state_intermediate = '2p'
-    !        E_intermediate = 3.0d0
-    !    end select
+           ! Convert Z to string for filename
+           write(z_str, '(I0)') nint(Z) ! nint(Z) converts Z to nearest integer
 
-       ! Convert Z to string for filename
-       write(z_str, '(I0)') nint(Z) ! nint(Z) converts Z to nearest integer
+           filename_n = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        trim(z_str) // '_polynomial_table_' // trim(state_intermediate) // '.txt'
+           filename_s = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        trim(z_str) // '_polynomial_table_' // trim(state_initial) // '.txt'
+           print *, 'Reading wave functions from:'
+           print *, 'Intermediate state (', trim(state_intermediate), '): ', trim(filename_n)
+           print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
 
-       filename_n = '/home/sriman/Documents/Thesis/workspace/programs/rad/' // &
-                    trim(z_str) // '_polynomial_table_' // trim(state_intermediate) // '.txt'
-       filename_s = '/home/sriman/Documents/Thesis/workspace/programs/rad/' // &
-                    trim(z_str) // '_polynomial_table_' // trim(state_initial) // '.txt'
-       print *, 'Reading wave functions from:'
-       print *, 'Intermediate state (', trim(state_intermediate), '): ', trim(filename_n)
-       print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
+           call read_radial_functions(filename_n, npoints_n, r_n, G_n, F_n)
+           call read_radial_functions(filename_s, npoints_s, r_s, G_s, F_s)
 
-       call read_radial_functions(filename_n, npoints_n, r_n, G_n, F_n)
-       call read_radial_functions(filename_s, npoints_s, r_s, G_s, F_s)
+           M_n_s = gauss_legendre_integration_2nd(0d0, R_rel, &
+                        npoints_n, r_n, G_n, F_n, &
+                        npoints_s, r_s, G_s, F_s, &
+                        potential)
+           M_n_s = - M_n_s
 
-       M_n_s = gauss_legendre_integration_2nd(0d0, R_rel, &
-                    npoints_n, r_n, G_n, F_n, &
-                    npoints_s, r_s, G_s, F_s, &
-                    potential)
-       M_n_s = - M_n_s
+           print *, 'M_n,s (0 to R) using Gauss–Legendre = ', M_n_s
 
-       print *, 'M_n,s (0 to R) using Gauss–Legendre = ', M_n_s
+        !    !----------------------------------------------------------
+        !    ! Write Z and M_n_s to a single file (append if exists)
+        !    !----------------------------------------------------------
+        !    ! Use a fixed filename
+        !    matrix_element_filename = '/home/sriman/Documents/Thesis/Z_Matrix_elements.txt'
 
-    !    !----------------------------------------------------------
-    !    ! Write Z and M_n_s to a single file (append if exists)
-    !    !----------------------------------------------------------
-    !    ! Use a fixed filename
-    !    matrix_element_filename = '/home/sriman/Documents/Thesis/Z_Matrix_elements.txt'
+        !    ! Check if file exists
+        !    inquire(file=trim(matrix_element_filename), exist=file_exists)
 
-    !    ! Check if file exists
-    !    inquire(file=trim(matrix_element_filename), exist=file_exists)
+        !    ! Open for append (creates if not existing)
+        !    open(newunit=output_unit, file=trim(matrix_element_filename), status='unknown', &
+        !         action='write', position='append', iostat=io_stat)
 
-    !    ! Open for append (creates if not existing)
-    !    open(newunit=output_unit, file=trim(matrix_element_filename), status='unknown', &
-    !         action='write', position='append', iostat=io_stat)
+        !    if (io_stat == 0) then
+        !        ! Write header only if the file was newly created
+        !        if (.not. file_exists) then
+        !            ! Reverted to 2 columns with spacing
+        !            write(output_unit, '(A5, A28)') '# Z', ' M_n_s'
+        !        end if
+        !        ! Write the data with adjusted spacing (Z and M_n_s only)
+        !        write(output_unit, '(F5.1, 5x, ES24.16E3)') Z, M_n_s
+        !        close(output_unit)
+        !        print *, 'Matrix element M_n_s written/appended to: ', trim(matrix_element_filename)
+        !    else
+        !        print *, 'Error opening file for writing M_n_s: ', trim(matrix_element_filename)
+        !        print *, 'IOSTAT = ', io_stat
+        !    end if
 
-    !    if (io_stat == 0) then
-    !        ! Write header only if the file was newly created
-    !        if (.not. file_exists) then
-    !            ! Reverted to 2 columns with spacing
-    !            write(output_unit, '(A5, A28)') '# Z', ' M_n_s'
-    !        end if
-    !        ! Write the data with adjusted spacing (Z and M_n_s only)
-    !        write(output_unit, '(F5.1, 5x, ES24.16E3)') Z, M_n_s
-    !        close(output_unit)
-    !        print *, 'Matrix element M_n_s written/appended to: ', trim(matrix_element_filename)
-    !    else
-    !        print *, 'Error opening file for writing M_n_s: ', trim(matrix_element_filename)
-    !        print *, 'IOSTAT = ', io_stat
-    !    end if
+           Delta_E = (M_n_s**2) / (E_initial - E_intermediate)
+           print *, 'For initial state ', trim(state_initial), ' (E = ', E_initial, &
+             ') and intermediate state ', trim(state_intermediate), ' (E = ', E_intermediate, '):'
+           print *, 'Second-order energy correction ΔE^(2) = ', Delta_E
 
-       Delta_E = (M_n_s**2) / (E_initial - E_intermediate)
-       print *, 'For initial state ', trim(state_initial), ' (E = ', E_initial, &
-         ') and intermediate state ', trim(state_intermediate), ' (E = ', E_intermediate, '):'
-       print *, 'Second-order energy correction ΔE^(2) = ', Delta_E
+           !----------------------------------------------------------
+           ! Write/update the results table for second order corrections
+           !----------------------------------------------------------
+           call update_second_order_table(trim(state_initial), trim(state_intermediate), Delta_E) ! <-- Commented out call
+        else
+           print *, 'Invalid order choice. Exiting.'
+           stop
+        end if
 
-       !----------------------------------------------------------
-       ! Write/update the results table for second order corrections
-       !----------------------------------------------------------
-       call update_second_order_table(trim(state_initial), trim(state_intermediate), Delta_E) ! <-- Commented out call
+    else if (trim(main_choice) == 'amplitudes') then
+        ! --------------------------------------------------------------
+        ! NEW: Prompt for weak or stark amplitude
+        ! --------------------------------------------------------------
+        print *, 'Do you want weak amplitude or stark amplitude? (enter weak or stark)'
+        read *, amplitude_choice
+
+        if (trim(amplitude_choice) == 'weak') then
+            ! Prompt user for atomic number Z, N, and R in fm
+            print *, 'Enter atomic number Z (e.g., 92 for Uranium):'
+            read *, Z
+            print *, 'Enter number of neutrons N (e.g., 146 for Uranium):'
+            read *, N
+            print *, 'Enter nuclear radius R in fm (e.g., 5.8571 for Uranium):'
+            read *, R_fm
+
+            ! Convert R from fm to relativistic units (1/MeV)
+            R_rel = convert_R_fm_to_relativistic()
+
+            ! Initialize the weak potential with the new parameter c
+            call potential%init(Z, N, R_rel, c)
+
+            print *, 'Calculating weak amplitude...'
+            print *, 'rho0 is :', potential%rho0
+            print *, 'Nuclear radius R in relativistic units :', R_rel
+            print *, 'Gfermi rel is : ', Gfermi_relativistic
+            print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
+
+            !---------------------------------------------------------
+            ! Prompt for the states (initial, intermediate, final)
+            !---------------------------------------------------------
+            print *, 'Enter the initial state (e.g., 1s, 2s):'
+            read *, state_initial
+            print *, 'Enter the intermediate state (e.g., 2p, 3p, 4p, ..., 10p):'
+            read *, state_intermediate
+            print *, 'Enter the final state (e.g., 1s, 2s):'
+            read *, state_final
+
+            ! Convert Z to string for filename
+            write(z_str, '(I0)') nint(Z)
+
+            ! Build filenames for all three states
+            filename_s = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        trim(z_str) // '_polynomial_table_' // trim(state_initial) // '.txt'
+            filename_n = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        trim(z_str) // '_polynomial_table_' // trim(state_intermediate) // '.txt'
+            filename_f = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        trim(z_str) // '_polynomial_table_' // trim(state_final) // '.txt'
+
+            print *, 'Reading wave functions from:'
+            print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
+            print *, 'Intermediate state (', trim(state_intermediate), '): ', trim(filename_n)
+            print *, 'Final state (', trim(state_final), '): ', trim(filename_f)
+
+            ! Read all three wave functions
+            call read_radial_functions(filename_s, npoints_s, r_s, G_s, F_s)
+            call read_radial_functions(filename_n, npoints_n, r_n, G_n, F_n)
+            call read_radial_functions(filename_f, npoints_f, r_f, G_f, F_f)
+
+            ! Calculate R_ik (initial to intermediate)
+            R_ik = gauss_legendre_integration_weak(0d0, R_rel, &
+                        npoints_s, r_s, G_s, F_s, &
+                        npoints_n, r_n, G_n, F_n, &
+                        potential)
+
+            ! Calculate R_kf (intermediate to final)
+            R_kf = gauss_legendre_integration_weak(0d0, R_rel, &
+                        npoints_f, r_f, G_f, F_f, &
+                        npoints_n, r_n, G_n, F_n, &
+                        potential)
+
+            print *, 'R_ik (', trim(state_initial), ' -> ', trim(state_intermediate), ') = ', R_ik
+            print *, 'R_kf (', trim(state_final), ' -> ', trim(state_intermediate), ') = ', R_kf
+
+            !----------------------------------------------------------
+            ! Write results to weak amplitude file
+            !----------------------------------------------------------
+            weak_amplitude_filename = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/weak_amplitudes.txt'
+            
+            ! Check if file exists to write header
+            inquire(file=trim(weak_amplitude_filename), exist=file_exists)
+            
+            open(newunit=output_unit, file=trim(weak_amplitude_filename), status='unknown', &
+                 action='write', position='append', iostat=io_stat)
+            
+            if (io_stat == 0) then
+                ! Write header only if the file was newly created
+                if (.not. file_exists) then
+                    write(output_unit, '(A5, A10, A15, A15, A15, A25, A25)') &
+                        '# Z', ' R_fm', ' Initial', ' Intermediate', ' Final', ' R_ik', ' R_kf'
+                end if
+                ! Write the data
+                write(output_unit, '(F5.1, F10.6, 3(A15), 2(ES25.16E3))') &
+                    Z, R_fm, trim(state_initial), trim(state_intermediate), trim(state_final), R_ik, R_kf
+                close(output_unit)
+                print *, 'Weak amplitude results written to: ', trim(weak_amplitude_filename)
+            else
+                print *, 'Error opening file for writing weak amplitudes: ', trim(weak_amplitude_filename)
+                print *, 'IOSTAT = ', io_stat
+            end if
+
+            ! Deallocate arrays
+            deallocate(r_s, G_s, F_s)
+            deallocate(r_n, G_n, F_n)
+            deallocate(r_f, G_f, F_f)
+
+        else if (trim(amplitude_choice) == 'stark') then
+            print *, 'Stark amplitude calculation not yet implemented.'
+        else
+            print *, 'Invalid amplitude choice. Exiting.'
+            stop
+        end if
+
     else
-       print *, 'Invalid order choice. Exiting.'
-       stop
+        print *, 'Invalid main choice. Please enter energy or amplitudes. Exiting.'
+        stop
     end if
 
 contains
@@ -530,4 +667,94 @@ contains
         if (allocated(corr_arr)) deallocate(corr_arr)
     end subroutine update_second_order_table
 
+    !----------------------------------------------------------------
+    ! NEW: Gauss–Legendre integration for weak amplitude calculation
+    !----------------------------------------------------------------
+    function gauss_legendre_integration_weak(a, b, npoints_1, r_1, G_1, F_1, &
+                                            npoints_2, r_2, G_2, F_2, &
+                                            potential) result(R_val)
+        use bspqed_quadrature, only: ngl40, nodes40, weights40
+        implicit none
+        double precision, intent(in) :: a, b
+        integer, intent(in) :: npoints_1, npoints_2
+        double precision, dimension(npoints_1), intent(in) :: r_1, G_1, F_1
+        double precision, dimension(npoints_2), intent(in) :: r_2, G_2, F_2
+        type(weak_potential), intent(in) :: potential
+        double precision :: R_val
+        integer :: k, nGL
+        double precision :: sum_val, xm, xr, t, w, r_node
+
+        nGL = ngl40
+        xm  = 0.5d0 * (b + a)
+        xr  = 0.5d0 * (b - a)
+        sum_val = 0d0
+        do k = 1, nGL
+            t = nodes40(k)
+            w = weights40(k)
+            r_node = xm + xr*t
+            sum_val = sum_val + w * integrand_weak(r_node, npoints_1, r_1, G_1, F_1, &
+                                                 npoints_2, r_2, G_2, F_2, &
+                                                 potential)
+        end do
+        R_val = xr * sum_val
+    end function gauss_legendre_integration_weak
+
+    !----------------------------------------------------------------
+    ! integrand_weak(r): returns r * rho(r) * [G_1(r)*G_2(r) + F_1(r)*F_2(r)]
+    !----------------------------------------------------------------
+    function integrand_weak(rval, npoints_1, r_1, G_1, F_1, &
+                           npoints_2, r_2, G_2, F_2, &
+                           local_potential) result(val_weak)
+        implicit none
+        integer, intent(in) :: npoints_1, npoints_2
+        double precision, intent(in) :: rval
+        double precision, dimension(npoints_1), intent(in) :: r_1, G_1, F_1
+        double precision, dimension(npoints_2), intent(in) :: r_2, G_2, F_2
+        type(weak_potential), intent(in) :: local_potential
+        double precision :: val_weak
+        double precision :: G1_val, F1_val, G2_val, F2_val
+        double precision :: dr, fraction, rho_val
+        integer :: iL, iR ! Local loop indices
+
+        ! Interpolate first state
+        if (rval <= r_1(1)) then
+            G1_val = G_1(1)
+            F1_val = F_1(1)
+        else if (rval >= r_1(npoints_1)) then
+            G1_val = G_1(npoints_1)
+            F1_val = F_1(npoints_1)
+        else
+            iR = 1
+            do iL = 1, npoints_1-1
+                iR = iL + 1
+                if (r_1(iL) <= rval .and. rval < r_1(iR)) exit
+            end do
+            dr = r_1(iR) - r_1(iL)
+            fraction = (rval - r_1(iL)) / dr
+            G1_val = G_1(iL) + fraction*(G_1(iR)-G_1(iL))
+            F1_val = F_1(iL) + fraction*(F_1(iR)-F_1(iL))
+        end if
+
+        ! Interpolate second state
+        if (rval <= r_2(1)) then
+            G2_val = G_2(1)
+            F2_val = F_2(1)
+        else if (rval >= r_2(npoints_2)) then
+            G2_val = G_2(npoints_2)
+            F2_val = F_2(npoints_2)
+        else
+            iR = 1
+            do iL = 1, npoints_2-1
+                iR = iL + 1
+                if (r_2(iL) <= rval .and. rval < r_2(iR)) exit
+            end do
+            dr = r_2(iR) - r_2(iL)
+            fraction = (rval - r_2(iL)) / dr
+            G2_val = G_2(iL) + fraction*(G_2(iR)-G_2(iL))
+            F2_val = F_2(iL) + fraction*(F_2(iR)-F_2(iL))
+        end if
+
+        rho_val = local_potential%eval(rval)
+        val_weak = rval * rho_val * (G1_val*G2_val + F1_val*F2_val)
+    end function integrand_weak
 end program compute_radial_integrals
