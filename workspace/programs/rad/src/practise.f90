@@ -16,7 +16,7 @@ program print_polynomial_table_relativistic
 
    ! Constants
    double precision, parameter :: pi_local = 4.0d0 * atan(1.0d0)
-   double precision, parameter :: ialpha_scf = 1.0d0/137.036d0  ! Fine structure constant
+ 
 
    ! Variable declarations
    character(len=10) :: state_str
@@ -66,21 +66,27 @@ program print_polynomial_table_relativistic
       print *, 'Enter the number of electrons in the system (1-90):'
       read(*,*) num_electrons
       
-      if (num_electrons < 1 .or. num_electrons > 90) then
-         print *, 'Error: Number of electrons must be between 1 and 90.'
-         stop
-      endif
-      
-      print *, 'Multi-electron calculation selected with', num_electrons, 'electrons.'
-      
       ! Get atomic number and nuclear parameters
       print *, 'Enter the atomic number Z:'
       read(*,*) znucl
       
+      if (num_electrons < 1 .or. num_electrons > znucl) then
+         print *, 'Error: Number of electrons must be between 1 and Z=', znucl
+         stop
+      endif
+      
+      if (num_electrons > 90) then
+         print *, 'Error: Number of electrons must be <= 90 for this implementation.'
+         stop
+      endif
+      
+      print *, 'Multi-electron calculation selected with', num_electrons, 'electrons.'
+      print *, 'This creates a ', trim(ion_name(znucl, num_electrons)), ' system.'
+
       print *, 'Enter the nuclear RMS radius (in fm):'
       read(*,*) rms_fm
       rms = rms_fm ! Convert for SCF calculation
-      
+
       ! Get the state for wavefunction output
       print *, 'Enter the state for wavefunction output (1s, 2s, 2p, 2p3, 3s, 3p, 3p3, 4s):'
       read(*,*) state_str
@@ -117,14 +123,16 @@ program print_polynomial_table_relativistic
       nbsplines = nknots - order
       
       allocate(knots(nknots))
-      knots = 0.0d0
       
       ! Nuclear potential parameters (Fermi distribution)
-      afermi = 2.3d0 / (4.0d0 * log(3.0d0)) / bohr_radius
-      cfermi = sqrt((5.0d0 * rms**2 - 7.0d0 * (pi_local * afermi)**2) / 3.0d0) / bohr_radius
+      afermi = 2.3d0 / (4.0d0 * log(3.0d0)) / electron_reduced_compton
+      cfermi = sqrt((5.0d0 * (rms / electron_reduced_compton)**2 - 7.0d0 * (pi_local * afermi)**2) / 3.0d0) 
       
-      rcavity = 40.0d0
-      call knots_01(cfermi, rcavity, npoints/10, order, knots)
+      ! Set nuclear radius for multi-electron case
+      rnucl = sqrt(5.d0/3.d0) * rms_fm / electron_reduced_compton
+      
+      rcavity = 2.5d0 / alpha
+      call kntseq1(rnucl, rcavity, npoints/10, order, knots)
       
       nuclpot_scf%znucl = znucl
       nuclpot_scf%a = afermi
@@ -197,11 +205,11 @@ program print_polynomial_table_relativistic
       call extract_target_wavefunction_scf(kappa, nmain, core_kappas, core_nmains, core_coefficients, &
                                            valence_kappas, valence_nmains, valence_coefficients, &
                                            ncores, nvalences, coefs)
+
+        
+    
       
-      ! Apply sign correction for multi-electron case only for 1s state
-      if (trim(state_str) .eq. '1s') then
-          coefs = -coefs
-      endif
+      ! Remove the sign correction for multi-electron case - SCF already has correct convention
       
       ! Create output filename
       write(znucl_str, '(I0)') znucl
@@ -475,7 +483,7 @@ program print_polynomial_table_relativistic
 
    npoints_output = 1000
    x_start = 1.0d-6
-   x_end   = 20.0d0
+   x_end   = 400.0d0
    x_step  = (x_end - x_start) / (npoints_output - 1)
 
    do i = 1, npoints_output
@@ -483,6 +491,7 @@ program print_polynomial_table_relativistic
       inbv = 1
       gx = radialg(knots, order, kappa, coefs, x, inbv)
       fx = radialf(knots, order, kappa, coefs, x, inbv)
+
       !Comment out the table data writing
       write(unit_num, '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)') x, gx, fx
       print '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)', x, gx, fx
@@ -555,7 +564,35 @@ contains
    end subroutine parse_state
 
    !-----------------------------------------------------------------------
-   ! Setup Electron Configuration
+   ! Get ion name for display
+   !-----------------------------------------------------------------------
+   function ion_name(z, nelec) result(name)
+       integer, intent(in) :: z, nelec
+       character(len=20) :: name
+       character(len=2) :: element_symbols(20) = ['H ', 'He', 'Li', 'Be', 'B ', 'C ', &
+                                                  'N ', 'O ', 'F ', 'Ne', 'Na', 'Mg', &
+                                                  'Al', 'Si', 'P ', 'S ', 'Cl', 'Ar', &
+                                                  'K ', 'Ca']
+       integer :: charge
+       
+       charge = z - nelec
+       if (z <= 20) then
+           if (charge == 0) then
+               name = trim(element_symbols(z))
+           else
+               write(name, '(A,I0,"+")') trim(element_symbols(z)), charge
+           endif
+       else
+           if (charge == 0) then
+               write(name, '("Z=",I0)') z
+           else
+               write(name, '("Z=",I0,"(",I0,"+)")') z, charge
+           endif
+       endif
+   end function ion_name
+
+   !-----------------------------------------------------------------------
+   ! Setup Electron Configuration (Fixed for proper multi-electron systems)
    !-----------------------------------------------------------------------
    subroutine setup_electron_configuration(num_electrons, target_nmain, target_kappa, &
                                           core_kappas, core_nmains, &
@@ -566,84 +603,109 @@ contains
        integer, dimension(:), allocatable, intent(out) :: valence_kappas, valence_nmains
        integer, intent(out) :: ncores, nvalences
        
-       integer :: electrons_placed, n, kap
-       logical :: target_is_core
+       integer :: electrons_left, n, kap, shell_capacity, electrons_in_shell
+       logical :: target_found
+       integer, dimension(20) :: temp_core_kappas, temp_core_nmains
        
-       ! Fill electron shells in order: 1s, 2s, 2p1/2, 2p3/2, 3s, 3p1/2, 3p3/2, etc.
-       ! Determine configuration up to target state
-       target_is_core = .false.
-       electrons_placed = 0
-       
-       ! Count electrons up to target state
-       do n = 1, target_nmain
-           do kap = -n, n
-               if (kap == 0) cycle
-               electrons_placed = electrons_placed + 2 * abs(kap)
-               if (n == target_nmain .and. kap == target_kappa) then
-                   if (electrons_placed <= num_electrons) target_is_core = .true.
-                   exit
-               endif
-               if (electrons_placed >= num_electrons) exit
-           end do
-           if (electrons_placed >= num_electrons) exit
-       end do
-       
-       ! Build configuration
        ncores = 0
-       nvalences = 0
-       electrons_placed = 0
+       electrons_left = num_electrons
+       target_found = .false.
        
-       ! Count states first
-       do n = 1, max(target_nmain + 2, 4)
-           do kap = -n, n
-               if (kap == 0) cycle
-               if (electrons_placed + 2 * abs(kap) <= num_electrons .or. &
-                   (n == target_nmain .and. kap == target_kappa .and. target_is_core)) then
+       ! Fill shells in proper aufbau order
+       ! For each n, we have valid kappa values: -1, -2, ..., -(n), 1, 2, ..., (n-1)
+       ! But we must exclude kappa=n for any n (no states with j=n+1/2 exist)
+       
+       shell_loop: do n = 1, 10
+           ! Process s states (kappa = -1)
+           if (n >= 1) then
+               kap = -1
+               shell_capacity = 2 * abs(kap)  ! 2 electrons
+               electrons_in_shell = min(electrons_left, shell_capacity)
+               
+               if (electrons_in_shell > 0 .or. (n == target_nmain .and. kap == target_kappa)) then
                    ncores = ncores + 1
-                   electrons_placed = electrons_placed + 2 * abs(kap)
-               else if (n == target_nmain .and. kap == target_kappa .and. .not. target_is_core) then
-                   nvalences = nvalences + 1
-               else if (electrons_placed < num_electrons .and. n <= target_nmain + 1) then
-                   nvalences = nvalences + 1
+                   temp_core_nmains(ncores) = n
+                   temp_core_kappas(ncores) = kap
+                   
+                   if (n == target_nmain .and. kap == target_kappa) then
+                       target_found = .true.
+                   endif
+                   
+                   if (electrons_in_shell > 0) then
+                       electrons_left = electrons_left - electrons_in_shell
+                   endif
                endif
-               if (n == target_nmain .and. kap == target_kappa) exit
-           end do
-           if (n == target_nmain .and. kap == target_kappa) exit
-       end do
+           endif
+           
+           ! Process p states (kappa = 1, -2) for n >= 2
+           if (n >= 2) then
+               ! p1/2 states (kappa = 1)
+               kap = 1
+               shell_capacity = 2 * abs(kap)  ! 2 electrons
+               electrons_in_shell = min(electrons_left, shell_capacity)
+               
+               if (electrons_in_shell > 0 .or. (n == target_nmain .and. kap == target_kappa)) then
+                   ncores = ncores + 1
+                   temp_core_nmains(ncores) = n
+                   temp_core_kappas(ncores) = kap
+                   
+                   if (n == target_nmain .and. kap == target_kappa) then
+                       target_found = .true.
+                   endif
+                   
+                   if (electrons_in_shell > 0) then
+                       electrons_left = electrons_left - electrons_in_shell
+                   endif
+               endif
+               
+               ! p3/2 states (kappa = -2)
+               kap = -2
+               shell_capacity = 2 * abs(kap)  ! 4 electrons
+               electrons_in_shell = min(electrons_left, shell_capacity)
+               
+               if (electrons_in_shell > 0 .or. (n == target_nmain .and. kap == target_kappa)) then
+                   ncores = ncores + 1
+                   temp_core_nmains(ncores) = n
+                   temp_core_kappas(ncores) = kap
+                   
+                   if (n == target_nmain .and. kap == target_kappa) then
+                       target_found = .true.
+                   endif
+                   
+                   if (electrons_in_shell > 0) then
+                       electrons_left = electrons_left - electrons_in_shell
+                   endif
+               endif
+           endif
+           
+           ! Add d and f states for higher n if needed...
+           
+           ! Stop when we've placed all electrons and found target
+           if (electrons_left <= 0 .and. target_found) exit shell_loop
+       end do shell_loop
        
-       ! Allocate arrays
-       allocate(core_kappas(ncores), core_nmains(ncores))
-       if (nvalences > 0) then
-           allocate(valence_kappas(nvalences), valence_nmains(nvalences))
+       if (.not. target_found) then
+           print *, 'Error: Target state not reachable with given electron configuration'
+           print *, 'Target: n=', target_nmain, ', kappa=', target_kappa
+           stop
        endif
        
-       ! Fill arrays
-       ncores = 0
-       nvalences = 0
-       electrons_placed = 0
-       
-       do n = 1, max(target_nmain + 2, 4)
-           do kap = -n, n
-               if (kap == 0) cycle
-               if (electrons_placed + 2 * abs(kap) <= num_electrons .or. &
-                   (n == target_nmain .and. kap == target_kappa .and. target_is_core)) then
-                   ncores = ncores + 1
-                   core_nmains(ncores) = n
-                   core_kappas(ncores) = kap
-                   electrons_placed = electrons_placed + 2 * abs(kap)
-               else if (n == target_nmain .and. kap == target_kappa .and. .not. target_is_core) then
-                   nvalences = nvalences + 1
-                   valence_nmains(nvalences) = n
-                   valence_kappas(nvalences) = kap
-               else if (electrons_placed < num_electrons .and. n <= target_nmain + 1) then
-                   nvalences = nvalences + 1
-                   valence_nmains(nvalences) = n
-                   valence_kappas(nvalences) = kap
-               endif
-               if (n == target_nmain .and. kap == target_kappa) exit
-           end do
-           if (n == target_nmain .and. kap == target_kappa) exit
+       ! Debug output
+       print *, '# Debug: Configuration setup for', num_electrons, 'electrons:'
+       do i = 1, ncores
+           print *, '#   Shell', i, ': n=', temp_core_nmains(i), ', kappa=', temp_core_kappas(i)
        end do
+       
+       ! For this implementation, treat everything as core (no valence separation)
+       nvalences = 0
+       
+       ! Allocate and copy
+       allocate(core_kappas(ncores), core_nmains(ncores))
+       core_kappas(1:ncores) = temp_core_kappas(1:ncores)
+       core_nmains(1:ncores) = temp_core_nmains(1:ncores)
+       
+       ! Allocate empty valence arrays
+       allocate(valence_kappas(0), valence_nmains(0))
    end subroutine setup_electron_configuration
 
    !-----------------------------------------------------------------------
@@ -734,7 +796,7 @@ contains
            lb = (abs(2 * kapb + 1) - 1) / 2
            nb = nspectrum / 2 + nmnb - lb
            ! For the binding energy of the electron in the SCF
-           epsb = spectrum(nb) - ialpha_scf**2
+           epsb = spectrum(nb) - ialpha**2
            coefb = coefmat(:, nb)
            core_coefficients(:, i) = coefb
            epsbs(i, 1) = epsb
@@ -762,7 +824,7 @@ contains
                call dirac(knots, order, kapb, potential_scf, nodes, weights, spectrum, coefmat, hfmat=hfdir(:, :, i))
                lb = (abs(2 * kapb + 1) - 1) / 2
                nb = nspectrum / 2 + nmnb - lb
-               epsb = spectrum(nb) - ialpha_scf**2
+               epsb = spectrum(nb) - ialpha**2
                coefb = coefmat(:, nb)
                core_coefficients(:, i) = coefb
                epsbs(i, 2) = epsb
@@ -825,7 +887,7 @@ contains
                call dirac(knots, order, kapb, potential_scf, nodes, weights, spectrum, coefmat, hfmat=hfmat)
                lb = (abs(2 * kapb + 1) - 1) / 2
                nb = nspectrum / 2 + nmnb - lb
-               epsb = spectrum(nb) - ialpha_scf**2
+               epsb = spectrum(nb) - ialpha**2
                coefb = coefmat(:, nb)
                core_coefficients(:, i) = coefb
                epsbs(i, step) = epsb
@@ -852,7 +914,7 @@ contains
            call dirac(knots, order, kapb, potential_scf, nodes, weights, spectrum, coefmat, hfmat=hfmat)
            lb = (abs(2 * kapb + 1) - 1) / 2
            nb = nspectrum / 2 + nmnb - lb
-           epsb = spectrum(nb) - ialpha_scf**2
+           epsb = spectrum(nb) - ialpha**2
            coefb = coefmat(:, nb)
            core_coefficients(:, imax) = coefb
            epsbs(imax, 1) = epsbs(imax, 2)
@@ -934,7 +996,7 @@ contains
            call dirac(knots, order, kapa, potential_scf, nodes, weights, spectrum, coefmat, hfmat=hfmat)
            la = (abs(2 * kapa + 1) - 1) / 2
            na = nspectrum / 2 + nmna - la
-           valence_energies(i) = spectrum(na) - ialpha_scf**2
+           valence_energies(i) = spectrum(na) - ialpha**2
            valence_coefficients(:, i) = coefmat(:, na)
        end do
    end subroutine valence_solutions_scf

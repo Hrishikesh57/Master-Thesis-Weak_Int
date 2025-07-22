@@ -1,0 +1,24 @@
+# Energy conversion from atomic units to relativistic units
+# Conversion factor: α² = 5.325136e-05
+# Format: Original_Energy_au  Converted_Energy_relativistic
+#============================================================
+# Test energy file - Lithium energies from your previous output
+# State    Energy (au)
+1s -1.487116298484e-04
+# Original: 1s        -2.7926352978756768
+2s -1.045430444171e-05
+# Original: 2s        -0.19631994907467742
+2p1/2 -6.850168211575e-06
+# Original: 2p1/2     -0.12863836919495952
+2p3/2 -6.850032372107e-06
+# Original: 2p3/2     -0.12863581828423776
+3s -3.929968338691e-07
+# Original: 3s        -0.073800336351268925E-1
+3p1/2 -3.023109145647e-07
+# Original: 3p1/2     -0.056770551960653393E-1
+3p3/2 -3.023067300546e-07
+# Original: 3p3/2     -0.056769766157231061E-1
+3d3/2 -2.958727949669e-07
+# Original: 3d3/2     -0.055561546312674182E-1
+3d5/2 -2.958719186220e-07
+# Original: 3d5/2     -0.055561381745064864E-1

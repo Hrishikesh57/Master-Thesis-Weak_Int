@@ -46,6 +46,40 @@ program compute_radial_integrals
     double precision :: R_ik, R_kf
     character(len=256) :: weak_amplitude_filename
 
+    ! NEW: For weak amplitude calculations with multiple intermediate states
+    integer :: num_weak_intermediate_states
+    character(len=20), allocatable :: weak_intermediate_states(:)
+    double precision, allocatable :: E_weak_intermediate_array(:)
+    double precision :: E_initial_weak, E_final_weak
+    double precision :: A_W ! Final weak amplitude result
+    double precision :: R_weak_temp_1, R_weak_temp_2 ! Temporary matrix elements
+    double precision :: R_weak_temp_3, R_weak_temp_4 ! Additional temporary matrix elements
+    double precision :: numerator, energy_denominator, state_contribution ! Calculation variables
+    double precision :: weak_contribution_1, weak_contribution_2 ! Individual contributions
+    integer :: i_weak_state
+
+    ! NEW: System type selection for both amplitude calculations
+    integer :: system_type ! 1 = single-electron, 2 = multi-electron
+    character(len=5) :: system_prefix ! "" for single, "_scf" for multi
+
+    ! NEW: For stark amplitude calculations with multiple intermediate states
+    integer :: num_intermediate_states
+    character(len=20), allocatable :: intermediate_states(:)
+    integer :: i_state
+
+    ! NEW: For stark amplitude energy values and final result
+    double precision, allocatable :: E_intermediate_array(:)
+    double precision :: E_initial_stark, E_final_stark 
+    double precision :: A_S ! Final stark amplitude result
+    double precision :: R_temp_1, R_temp_2 ! Temporary matrix elements
+    double precision :: contribution_1, contribution_2 ! Individual contributions
+    double precision, parameter :: e_charge = 1.0d0 ! Elementary charge (in natural units)
+    double precision :: E0_field ! Electric field strength (to be set by user)
+    double precision :: denominator_sum ! Sum of energy denominators
+
+    ! NEW: For asymmetry factor calculation
+    double precision :: eta_asymmetry
+
     ! --------------------------------------------------------------
     ! NEW: Prompt for energy corrections or amplitudes
     ! --------------------------------------------------------------
@@ -243,116 +277,228 @@ program compute_radial_integrals
 
     else if (trim(main_choice) == 'amplitudes') then
         ! --------------------------------------------------------------
-        ! NEW: Prompt for weak or stark amplitude
+        !  Combined stark and weak amplitude calculation
         ! --------------------------------------------------------------
-        print *, 'Do you want weak amplitude or stark amplitude? (enter weak or stark)'
-        read *, amplitude_choice
+        ! Prompt user for atomic number Z, N, and R in fm
+        print *, 'Enter atomic number Z (e.g., 92 for Uranium):'
+        read *, Z
+        print *, 'Enter number of neutrons N (e.g., 146 for Uranium):'
+        read *, N
+        print *, 'Enter nuclear radius R in fm (e.g., 5.8571 for Uranium):'
+        read *, R_fm
 
-        if (trim(amplitude_choice) == 'weak') then
-            ! Prompt user for atomic number Z, N, and R in fm
-            print *, 'Enter atomic number Z (e.g., 92 for Uranium):'
-            read *, Z
-            print *, 'Enter number of neutrons N (e.g., 146 for Uranium):'
-            read *, N
-            print *, 'Enter nuclear radius R in fm (e.g., 5.8571 for Uranium):'
-            read *, R_fm
+        ! Convert R from fm to relativistic units (1/MeV)
+        R_rel = convert_R_fm_to_relativistic()
 
-            ! Convert R from fm to relativistic units (1/MeV)
-            R_rel = convert_R_fm_to_relativistic()
+        ! Initialize the weak potential with the new parameter c
+        call potential%init(Z, N, R_rel, c)
 
-            ! Initialize the weak potential with the new parameter c
-            call potential%init(Z, N, R_rel, c)
+        print *, 'Calculating both stark and weak amplitudes...'
+        print *, 'rho0 is :', potential%rho0
+        print *, 'Nuclear radius R in relativistic units :', R_rel
+        print *, 'Gfermi rel is : ', Gfermi_relativistic
+        print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
 
-            print *, 'Calculating weak amplitude...'
-            print *, 'rho0 is :', potential%rho0
-            print *, 'Nuclear radius R in relativistic units :', R_rel
-            print *, 'Gfermi rel is : ', Gfermi_relativistic
-            print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
+        !---------------------------------------------------------
+        ! Prompt for system type (single or multi-electron)
+        !---------------------------------------------------------
+        print *, 'Choose the type of wavefunction:'
+        print *, '1 - Single-electron system'
+        print *, '2 - Multi-electron system (SCF)'
+        print *, 'Enter your choice (1 or 2):'
+        read *, system_type
+        
+        if (system_type == 1) then
+            system_prefix = ''
+            print *, 'Using single-electron wavefunctions'
+        else if (system_type == 2) then
+            system_prefix = '_scf'
+            print *, 'Using multi-electron SCF wavefunctions'
+        else
+            print *, 'Invalid choice. Defaulting to single-electron system.'
+            system_type = 1
+            system_prefix = ''
+        end if
 
-            !---------------------------------------------------------
-            ! Prompt for the states (initial, intermediate, final)
-            !---------------------------------------------------------
-            print *, 'Enter the initial state (e.g., 1s, 2s):'
-            read *, state_initial
-            print *, 'Enter the intermediate state (e.g., 2p, 3p, 4p, ..., 10p):'
-            read *, state_intermediate
-            print *, 'Enter the final state (e.g., 1s, 2s):'
-            read *, state_final
+        !---------------------------------------------------------
+        ! Prompt for the states (initial and final)
+        !---------------------------------------------------------
+        print *, 'Enter the initial state (e.g., 1s, 2s):'
+        read *, state_initial
+        print *, 'Enter the final state (e.g., 1s, 2s):'
+        read *, state_final
 
-            ! Convert Z to string for filename
-            write(z_str, '(I0)') nint(Z)
+        !---------------------------------------------------------
+        ! Prompt for intermediate states to sum over
+        !---------------------------------------------------------
+        print *, 'How many intermediate states do you want to sum over?'
+        read *, num_intermediate_states
+        
+        allocate(intermediate_states(num_intermediate_states))
+        
+        print *, 'Enter the intermediate states to sum over:'
+        print *, 'For p states, you can specify both j=1/2 and j=3/2 components:'
+        print *, 'Examples: 2p, 2p3 (for 2p3/2), 3p, 3p3, etc.'
+        
+        do i_state = 1, num_intermediate_states
+            print *, 'Enter intermediate state ', i_state, ':'
+            read *, intermediate_states(i_state)
+        end do
 
-            ! Build filenames for all three states
-            filename_s = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
-                        trim(z_str) // '_polynomial_table_' // trim(state_initial) // '.txt'
-            filename_n = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
-                        trim(z_str) // '_polynomial_table_' // trim(state_intermediate) // '.txt'
-            filename_f = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
-                        trim(z_str) // '_polynomial_table_' // trim(state_final) // '.txt'
+        ! Convert Z to string for filename
+        write(z_str, '(I0)') nint(Z)
 
-            print *, 'Reading wave functions from:'
-            print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
-            print *, 'Intermediate state (', trim(state_intermediate), '): ', trim(filename_n)
-            print *, 'Final state (', trim(state_final), '): ', trim(filename_f)
+        ! Build filenames for initial and final states based on system type
+        filename_s = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/GRASP_rel/' // &
+                    trim(z_str) // '_' // trim(state_initial) // '_rel.txt'
+        filename_f = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/GRASP_rel/' // &
+                    trim(z_str) // '_' // trim(state_final) // '_rel.txt'
 
-            ! Read all three wave functions
-            call read_radial_functions(filename_s, npoints_s, r_s, G_s, F_s)
+        print *, 'Reading wave functions from:'
+        print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
+        print *, 'Final state (', trim(state_final), '): ', trim(filename_f)
+
+        ! Read initial and final wave functions
+        call read_radial_functions(filename_s, npoints_s, r_s, G_s, F_s)
+        call read_radial_functions(filename_f, npoints_f, r_f, G_f, F_f)
+
+        ! Prompt for energy values
+        print *, 'Enter the energy of the initial state (', trim(state_initial), ') in relativistic units:'
+        read *, E_initial_stark
+        print *, 'Enter the energy of the final state (', trim(state_final), ') in relativistic units:'
+        read *, E_final_stark
+        print *, 'Enter the electric field strength E0 (in relativistic units):'
+        read *, E0_field
+
+        ! Allocate array for intermediate state energies
+        allocate(E_intermediate_array(num_intermediate_states))
+        
+        ! Prompt for intermediate state energies
+        do i_state = 1, num_intermediate_states
+            print *, 'Enter the energy of intermediate state ', trim(intermediate_states(i_state)), ' in relativistic units:'
+            read *, E_intermediate_array(i_state)
+        end do
+
+        ! Initialize both amplitudes
+        A_S = 0.0d0
+        A_W = 0.0d0
+
+        print *, ''
+        print *, '========================================='
+        print *, 'PROCESSING INTERMEDIATE STATES'
+        print *, '========================================='
+
+        ! Process each intermediate state and calculate both stark and weak contributions
+        do i_state = 1, num_intermediate_states
+            print *, 'Processing intermediate state: ', trim(intermediate_states(i_state))
+            
+            ! Build filename for this intermediate state based on system type
+            filename_n = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/GRASP_rel/' // &
+                        trim(z_str) // '_' // trim(intermediate_states(i_state)) // '_rel.txt'
+            
+            print *, 'Reading intermediate state from: ', trim(filename_n)
+            
+            ! Read intermediate state wave function
             call read_radial_functions(filename_n, npoints_n, r_n, G_n, F_n)
-            call read_radial_functions(filename_f, npoints_f, r_f, G_f, F_f)
+            
+            ! ========== STARK AMPLITUDE CALCULATION ==========
+            ! Calculate R_final,intermediate and R_intermediate,initial (electric dipole integrals)
+            R_temp_1 = gauss_legendre_integration_stark(0d0, 1000.0d0, &
+                        npoints_f, r_f, G_f, F_f, &
+                        npoints_n, r_n, G_n, F_n)
+            
+            R_temp_2 = gauss_legendre_integration_stark(0d0, 1000.0d0, &
+                        npoints_n, r_n, G_n, F_n, &
+                        npoints_s, r_s, G_s, F_s)
+            
+            ! Calculate stark contribution from this intermediate state
+            denominator_sum = 1.0d0/(E_initial_stark - E_intermediate_array(i_state)) + &
+                             1.0d0/(E_final_stark - E_intermediate_array(i_state))
+            
+            ! Apply factor of 2 for j=3/2 states to the entire stark contribution
+            if (index(trim(intermediate_states(i_state)), '3') > 0) then
+                contribution_1 = 2.0d0 * (R_temp_1 * R_temp_2) * denominator_sum
+            else
+                contribution_1 = (R_temp_1 * R_temp_2) * denominator_sum
+            end if
+            
+            A_S = A_S + contribution_1
 
-            ! Calculate R_ik (initial to intermediate)
-            R_ik = gauss_legendre_integration_weak(0d0, R_rel, &
+            ! ========== WEAK AMPLITUDE CALCULATION ==========
+            ! Calculate weak integrals
+            R_weak_temp_2 = gauss_legendre_integration_weak(0d0, R_rel, &
                         npoints_s, r_s, G_s, F_s, &
                         npoints_n, r_n, G_n, F_n, &
                         potential)
-
-            ! Calculate R_kf (intermediate to final)
-            R_kf = gauss_legendre_integration_weak(0d0, R_rel, &
-                        npoints_f, r_f, G_f, F_f, &
+            
+            R_weak_temp_3 = gauss_legendre_integration_weak(0d0, R_rel, &
                         npoints_n, r_n, G_n, F_n, &
+                        npoints_f, r_f, G_f, F_f, &
                         potential)
-
-            print *, 'R_ik (', trim(state_initial), ' -> ', trim(state_intermediate), ') = ', R_ik
-            print *, 'R_kf (', trim(state_final), ' -> ', trim(state_intermediate), ') = ', R_kf
-
-            !----------------------------------------------------------
-            ! Write results to weak amplitude file
-            !----------------------------------------------------------
-            weak_amplitude_filename = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/weak_amplitudes.txt'
             
-            ! Check if file exists to write header
-            inquire(file=trim(weak_amplitude_filename), exist=file_exists)
+            ! Calculate the two weak contributions separately
+            ! Formula: A_W = (ie)/(3√3) * Σ_n [R_{fn}*R^{(W)}_{ni}/(E_i - E_n) + R^{(W)}_{fn}*R_{ni}/(E_f - E_n)]
+            weak_contribution_1 = R_temp_1 * R_weak_temp_2 / (E_initial_stark - E_intermediate_array(i_state))
+            weak_contribution_2 = R_weak_temp_3 * R_temp_2 / (E_final_stark - E_intermediate_array(i_state))
             
-            open(newunit=output_unit, file=trim(weak_amplitude_filename), status='unknown', &
-                 action='write', position='append', iostat=io_stat)
-            
-            if (io_stat == 0) then
-                ! Write header only if the file was newly created
-                if (.not. file_exists) then
-                    write(output_unit, '(A5, A10, A15, A15, A15, A25, A25)') &
-                        '# Z', ' R_fm', ' Initial', ' Intermediate', ' Final', ' R_ik', ' R_kf'
-                end if
-                ! Write the data
-                write(output_unit, '(F5.1, F10.6, 3(A15), 2(ES25.16E3))') &
-                    Z, R_fm, trim(state_initial), trim(state_intermediate), trim(state_final), R_ik, R_kf
-                close(output_unit)
-                print *, 'Weak amplitude results written to: ', trim(weak_amplitude_filename)
+            ! Calculate total weak contribution from this intermediate state
+            if (index(trim(intermediate_states(i_state)), '3') > 0) then
+                ! This is a j=3/2 state, apply √2 factor to entire contribution
+                state_contribution = sqrt(2.0d0) * (weak_contribution_1 + weak_contribution_2)
             else
-                print *, 'Error opening file for writing weak amplitudes: ', trim(weak_amplitude_filename)
-                print *, 'IOSTAT = ', io_stat
+                ! This is a j=1/2 state, no extra factor
+                state_contribution = weak_contribution_1 + weak_contribution_2
             end if
+            
+            A_W = A_W + state_contribution
 
-            ! Deallocate arrays
-            deallocate(r_s, G_s, F_s)
+            ! Print intermediate results
+            print *, '--- Stark Amplitude ---'
+            print *, 'R_', trim(state_final), ',', trim(intermediate_states(i_state)), ' = ', R_temp_1
+            print *, 'R_', trim(intermediate_states(i_state)), ',', trim(state_initial), ' = ', R_temp_2
+            print *, 'Stark contribution from ', trim(intermediate_states(i_state)), ' = ', contribution_1
+            print *, '--- Weak Amplitude ---'
+            print *, 'R^{(W)}_', trim(intermediate_states(i_state)), ',', trim(state_initial), ' (weak) = ', R_weak_temp_2
+            print *, 'R^{(W)}_', trim(state_final), ',', trim(intermediate_states(i_state)), ' (weak) = ', R_weak_temp_3
+            print *, 'Weak contribution from ', trim(intermediate_states(i_state)), ' = ', state_contribution
+            print *, ''
+            
+            ! Deallocate intermediate state arrays for next iteration
             deallocate(r_n, G_n, F_n)
-            deallocate(r_f, G_f, F_f)
+        end do
 
-        else if (trim(amplitude_choice) == 'stark') then
-            print *, 'Stark amplitude calculation not yet implemented.'
-        else
-            print *, 'Invalid amplitude choice. Exiting.'
-            stop
-        end if
+        ! Apply the prefactors
+        A_S = -1.0d0 * e_charge**2 * E0_field * (1.0d0/27.0d0) * A_S
+        A_W = A_W / (3.0d0 * sqrt(3.0d0))
+
+        ! Calculate asymmetry factor: η = 2*(A_S*A_W)/|A_S|^2
+        eta_asymmetry = 2.0d0 * (A_S * A_W) / (A_S * A_S)
+
+        print *, ''
+        print *, '========================================='
+        print *, 'AMPLITUDE CALCULATION RESULTS'
+        print *, '========================================='
+        print *, 'Transition: ', trim(state_initial), ' -> ', trim(state_final)
+        print *, 'System type: ', trim(system_prefix)
+        print *, 'Electric field E0: ', E0_field
+        print *, ''
+        print *, 'Stark Amplitude A_S = ', A_S
+        print *, 'Weak Amplitude A_W = ', A_W
+        print *, 'Asymmetry Factor η = 2*(A_S*A_W)/|A_S|² = ', eta_asymmetry
+        print *, '========================================='
+
+        ! Write results to file
+        call write_amplitude_results_to_file(Z, N, R_fm, trim(state_initial), trim(state_final), &
+                                            E_initial_stark, E_final_stark, E0_field, &
+                                            intermediate_states, E_intermediate_array, &
+                                            num_intermediate_states, A_S, A_W, eta_asymmetry, &
+                                            trim(system_prefix))
+
+        ! Deallocate arrays
+        deallocate(r_s, G_s, F_s)
+        deallocate(r_f, G_f, F_f)
+        deallocate(intermediate_states)
+        deallocate(E_intermediate_array)
 
     else
         print *, 'Invalid main choice. Please enter energy or amplitudes. Exiting.'
@@ -668,7 +814,9 @@ contains
     end subroutine update_second_order_table
 
     !----------------------------------------------------------------
-    ! NEW: Gauss–Legendre integration for weak amplitude calculation
+    ! Gauss–Legendre integration for weak amplitude calculation
+    ! Computes ∫₀^∞ dr ρ(r) [G_n(r)*F_i(r) + F_n(r)*G_i(r)]
+    ! Since ρ(r) = 0 for r > R_rel, we integrate from 0 to R_rel
     !----------------------------------------------------------------
     function gauss_legendre_integration_weak(a, b, npoints_1, r_1, G_1, F_1, &
                                             npoints_2, r_2, G_2, F_2, &
@@ -692,28 +840,57 @@ contains
             t = nodes40(k)
             w = weights40(k)
             r_node = xm + xr*t
-            sum_val = sum_val + w * integrand_weak(r_node, npoints_1, r_1, G_1, F_1, &
-                                                 npoints_2, r_2, G_2, F_2, &
+            sum_val = sum_val + w * integrand_2nd(r_node, npoints_2, r_2, G_2, F_2, &
+                                                 npoints_1, r_1, G_1, F_1, &
                                                  potential)
         end do
         R_val = xr * sum_val
     end function gauss_legendre_integration_weak
 
     !----------------------------------------------------------------
-    ! integrand_weak(r): returns r * rho(r) * [G_1(r)*G_2(r) + F_1(r)*F_2(r)]
+    ! Gauss–Legendre integration for stark amplitude calculation
     !----------------------------------------------------------------
-    function integrand_weak(rval, npoints_1, r_1, G_1, F_1, &
-                           npoints_2, r_2, G_2, F_2, &
-                           local_potential) result(val_weak)
+    function gauss_legendre_integration_stark(a, b, npoints_1, r_1, G_1, F_1, &
+                                             npoints_2, r_2, G_2, F_2) result(R_val)
+        use bspqed_quadrature, only: ngl40, nodes40, weights40
+        implicit none
+        double precision, intent(in) :: a, b
+        integer, intent(in) :: npoints_1, npoints_2
+        double precision, dimension(npoints_1), intent(in) :: r_1, G_1, F_1
+        double precision, dimension(npoints_2), intent(in) :: r_2, G_2, F_2
+        double precision :: R_val
+        integer :: k, nGL
+        double precision :: sum_val, xm, xr, t, w, r_node
+
+        nGL = ngl40
+        xm  = 0.5d0 * (b + a)
+        xr  = 0.5d0 * (b - a)
+        sum_val = 0d0
+        do k = 1, nGL
+            t = nodes40(k)
+            w = weights40(k)
+            r_node = xm + xr*t
+            sum_val = sum_val + w * integrand_dipol_stark(r_node, npoints_1, r_1, G_1, F_1, &
+                                                         npoints_2, r_2, G_2, F_2)
+        end do
+        R_val = xr * sum_val
+    end function gauss_legendre_integration_stark
+
+
+    !----------------------------------------------------------------
+    ! integrand_dipol_stark(r): returns r * [G_1(r)*G_2(r) + F_1(r)*F_2(r)]
+    ! (for electric dipole transitions, no potential factor)
+    !----------------------------------------------------------------
+    function integrand_dipol_stark(rval, npoints_1, r_1, G_1, F_1, &
+                                  npoints_2, r_2, G_2, F_2) result(val_dipol)
         implicit none
         integer, intent(in) :: npoints_1, npoints_2
         double precision, intent(in) :: rval
         double precision, dimension(npoints_1), intent(in) :: r_1, G_1, F_1
         double precision, dimension(npoints_2), intent(in) :: r_2, G_2, F_2
-        type(weak_potential), intent(in) :: local_potential
-        double precision :: val_weak
+        double precision :: val_dipol
         double precision :: G1_val, F1_val, G2_val, F2_val
-        double precision :: dr, fraction, rho_val
+        double precision :: dr, fraction
         integer :: iL, iR ! Local loop indices
 
         ! Interpolate first state
@@ -754,7 +931,108 @@ contains
             F2_val = F_2(iL) + fraction*(F_2(iR)-F_2(iL))
         end if
 
-        rho_val = local_potential%eval(rval)
-        val_weak = rval * rho_val * (G1_val*G2_val + F1_val*F2_val)
-    end function integrand_weak
+        ! Electric dipole integrand: r * [G_1*G_2 + F_1*F_2]
+        val_dipol = rval * (G1_val*G2_val + F1_val*F2_val)
+    end function integrand_dipol_stark
+
+    !----------------------------------------------------------------
+    ! Write amplitude calculation results to file
+    !----------------------------------------------------------------
+    subroutine write_amplitude_results_to_file(Z_val, N_val, R_fm_val, state_init, state_final, &
+                                             E_init, E_final, E0, intermediate_states_arr, &
+                                             E_intermediate_arr, num_inter, A_S_val, A_W_val, &
+                                             eta_val, system_type)
+        implicit none
+        double precision, intent(in) :: Z_val, N_val, R_fm_val, E_init, E_final, E0
+        character(len=*), intent(in) :: state_init, state_final, system_type
+        integer, intent(in) :: num_inter
+        character(len=20), dimension(num_inter), intent(in) :: intermediate_states_arr
+        double precision, dimension(num_inter), intent(in) :: E_intermediate_arr
+        double precision, intent(in) :: A_S_val, A_W_val, eta_val
+        
+        character(len=256) :: amplitude_filename
+        logical :: file_exists
+        integer :: unit, ios, i, entry_number
+        character(len=500) :: current_inter_states
+        
+        ! Create filename
+        amplitude_filename = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/amplitude_calculation_results.txt'
+        
+        ! Build intermediate states string for current calculation
+        current_inter_states = ''
+        do i = 1, num_inter
+            if (i == 1) then
+                current_inter_states = trim(intermediate_states_arr(i))
+            else
+                current_inter_states = trim(current_inter_states) // ',' // trim(intermediate_states_arr(i))
+            end if
+        end do
+        
+        ! Check if file exists to determine entry number
+        inquire(file=amplitude_filename, exist=file_exists)
+        if (file_exists) then
+            entry_number = 999  ! Just use a placeholder since we're not counting properly
+        else
+            entry_number = 1
+        end if
+        
+        ! Open file for writing (append if exists, create if not)
+        open(newunit=unit, file=amplitude_filename, status='unknown', action='write', &
+             position='append', iostat=ios)
+        
+        if (ios /= 0) then
+            print *, 'Error opening amplitude results file for writing. IOSTAT:', ios
+            return
+        end if
+        
+        ! Write entry separator and header
+        write(unit, '(A)') '==============================================================================='
+        write(unit, '(A, I0, A, F0.1, A, F0.4, A)') '# NEW ENTRY - Z=', nint(Z_val), ', N=', N_val, ', R=', R_fm_val, ' fm'
+        write(unit, '(A)') '==============================================================================='
+        
+        ! System information
+        write(unit, '(A)') '# SYSTEM PARAMETERS:'
+        write(unit, '(A, F8.1)') '#   Atomic Number (Z):              ', Z_val
+        write(unit, '(A, F8.1)') '#   Number of Neutrons (N):         ', N_val
+        write(unit, '(A, F8.4, A)') '#   Nuclear Radius (R):             ', R_fm_val, ' fm'
+        write(unit, '(A, A)') '#   Wavefunction Type:              ', trim(system_type)
+        write(unit, '(A)') ''
+        
+        ! Transition information
+        write(unit, '(A)') '# TRANSITION INFORMATION:'
+        write(unit, '(A, A)') '#   Initial State:                  ', trim(state_init)
+        write(unit, '(A, A)') '#   Final State:                    ', trim(state_final)
+        write(unit, '(A, ES15.8E2, A)') '#   Initial State Energy:           ', E_init, ' (relativistic units)'
+        write(unit, '(A, ES15.8E2, A)') '#   Final State Energy:             ', E_final, ' (relativistic units)'
+        write(unit, '(A, ES15.8E2, A)') '#   Electric Field Strength (E0):   ', E0, ' (relativistic units)'
+        write(unit, '(A)') ''
+        
+        ! Intermediate states information
+        write(unit, '(A)') '# INTERMEDIATE STATES:'
+        do i = 1, num_inter
+            write(unit, '(A, I0, A, A, A, ES15.8E2)') '#   State ', i, ': ', &
+                  trim(intermediate_states_arr(i)), ', Energy: ', E_intermediate_arr(i)
+        end do
+        write(unit, '(A)') ''
+        
+        ! Results
+        write(unit, '(A)') '# CALCULATION RESULTS:'
+        write(unit, '(A, ES15.8E2)') '#   Stark Amplitude (A_S):          ', A_S_val
+        write(unit, '(A, ES15.8E2)') '#   Weak Amplitude (A_W):           ', A_W_val
+        write(unit, '(A, ES15.8E2)') '#   Asymmetry Factor (η):           ', eta_val
+        write(unit, '(A)') ''
+        
+        ! Simple summary line for easy parsing
+        write(unit, '(A)') '# SUMMARY:'
+        write(unit, '(A, F0.1, A, F0.1, A, F0.4, A, A, A, A, A, A, A, ES15.8E2, A, ES15.8E2, A, ES15.8E2)') &
+            'DATA: Z=', Z_val, ' N=', N_val, ' R=', R_fm_val, ' ', &
+            trim(state_init), '->', trim(state_final), ' Inter:', trim(current_inter_states), &
+            ' A_S=', A_S_val, ' A_W=', A_W_val, ' eta=', eta_val
+        
+        write(unit, '(A)') ''
+        write(unit, '(A)') ''
+        
+        close(unit)
+        print *, 'Amplitude calculation results written to: ', trim(amplitude_filename)
+    end subroutine write_amplitude_results_to_file
 end program compute_radial_integrals

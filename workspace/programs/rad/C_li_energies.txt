@@ -1,0 +1,12 @@
+# Lithium-like Carbon (C5+) energies in atomic units (Hartree)
+# Z = 6, lithium-like ion
+# State    Energy (au)
+2s       -16.2
+2p1/2    -15.8  
+2p3/2    -15.7
+3s       -7.2
+3p1/2    -6.9
+3p3/2    -6.8
+4s       -4.05
+4p1/2    -3.9
+4p3/2    -3.85

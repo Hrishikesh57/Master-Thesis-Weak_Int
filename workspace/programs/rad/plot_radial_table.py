@@ -17,6 +17,8 @@ def analyze_data(filename):
                 line = line.strip()
                 if not line.startswith('#') and line:
                     try:
+                        # Convert Fortran scientific notation (D) to Python format (E)
+                        line = line.replace('D', 'E')
                         values = [float(x) for x in line.split()]
                         if len(values) == 3:
                             data.append(values)
@@ -86,10 +88,10 @@ def plot_wavefunction_with_diagnostics(filename):
     parts = base_name.split('_')
     if len(parts) >= 4:
         z_str = parts[0]
-        state = parts[3].replace('.txt', '')
+        state = parts[3].replace('.dat', '').replace('.txt', '')
         title_info = f"Z={z_str}, State={state}"
     else:
-        title_info = base_name
+        title_info = base_name.replace('.dat', '').replace('.txt', '')
     
     # Create plot with 2 subplots: linear scale and near origin
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
@@ -120,7 +122,7 @@ def plot_wavefunction_with_diagnostics(filename):
     plt.tight_layout()
     
     # Save plot
-    output_name = filename.replace('.txt', '_diagnostic_plot.png')
+    output_name = filename.replace('.dat', '_diagnostic_plot.png').replace('.txt', '_diagnostic_plot.png')
     plt.savefig(output_name, dpi=300, bbox_inches='tight')
     print(f"\nDiagnostic plot saved as: {output_name}")
     
@@ -212,6 +214,7 @@ def compare_single_vs_multi_electron(single_file, multi_file):
 def plot_wavefunction(filename):
     """
     Plot radial wavefunction components g(r) and f(r) (linear scale only)
+    Data format: .dat file with columns: r, g(r), f(r)
     """
     
     # Check if file exists
@@ -228,6 +231,8 @@ def plot_wavefunction(filename):
                 line = line.strip()
                 if not line.startswith('#') and line:  # Skip comments and empty lines
                     try:
+                        # Convert Fortran scientific notation (D) to Python format (E)
+                        line = line.replace('D', 'E')
                         values = [float(x) for x in line.split()]
                         if len(values) == 3:  # Ensure we have r, g, f
                             data.append(values)
@@ -252,10 +257,10 @@ def plot_wavefunction(filename):
     parts = base_name.split('_')
     if len(parts) >= 4:
         z_str = parts[0]
-        state = parts[3].replace('.txt', '')
+        state = parts[3].replace('.dat', '').replace('.txt', '')
         title_info = f"Z={z_str}, State={state}"
     else:
-        title_info = base_name
+        title_info = base_name.replace('.dat', '').replace('.txt', '')
     
     # Create the plot with linear scale
     plt.figure(figsize=(12, 8))
@@ -274,7 +279,7 @@ def plot_wavefunction(filename):
     plt.tight_layout()
     
     # Save plot
-    output_name = filename.replace('.txt', '_linear_plot.png')
+    output_name = filename.replace('.dat', '_linear_plot.png').replace('.txt', '_linear_plot.png')
     plt.savefig(output_name, dpi=300, bbox_inches='tight')
     print(f"Linear plot saved as: {output_name}")
     
@@ -284,6 +289,7 @@ def plot_wavefunction(filename):
 def main():
     """
     Main function - can be run interactively or with command line arguments
+    Expects .dat files with format: r g(r) f(r)
     """
     
     if len(sys.argv) > 1:
@@ -293,9 +299,10 @@ def main():
     else:
         # Interactive usage
         print("Radial Wavefunction Plotter (Linear Scale)")
-        print("=========================================")
+        print("Data format: .dat files with columns r, g(r), f(r)")
+        print("=" * 50)
         
-        filename = input("Enter wavefunction filename: ")
+        filename = input("Enter wavefunction filename (.dat): ")
         
         print("\nPlot options:")
         print("1. Diagnostic analysis (linear + near origin)")
