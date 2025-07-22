@@ -1,0 +1,149 @@
+===============================================================================
+# CALCULATION ENTRY - Z=6, N=6.0, R=2.4702 fm
+===============================================================================
+
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                   6.0
+#   Number of Neutrons (N):              6.0
+#   Nuclear Radius (R):               2.4702 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  2s
+#   Final State:                    3s
+#   Initial State Energy:           -1.04543000E-05 (relativistic units)
+#   Final State Energy:             -3.92996800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 2p, Energy: -6.85016800E-06
+#   State 2: 2p3, Energy: -6.85003200E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.24470063E-05
+#   Weak Amplitude (A_W):            8.97857316E-14
+#   Asymmetry Factor (Î·):            1.44268797E-08
+
+# DATA_LINE (tab-separated):
+     6.0	     6.0	  2.4702	2s	3s	2p,2p3	[-6.85017E-06;-6.85003E-06]	-1.04543000E-05	-3.92996800E-06	 1.50000000E-13	 1.24470063E-05	âòi¾E9=
+	`üÒBûN>
+===============================================================================
+# CALCULATION ENTRY - Z=6, N=6.0, R=2.4702 fm
+===============================================================================
+
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                   6.0
+#   Number of Neutrons (N):              6.0
+#   Nuclear Radius (R):               2.4702 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  2s
+#   Final State:                    3s
+#   Initial State Energy:           -1.04543000E-05 (relativistic units)
+#   Final State Energy:             -3.92996800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 2p, Energy: -6.85016800E-06
+#   State 2: 2p3, Energy: -6.85003200E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.24470063E-05
+#   Weak Amplitude (A_W):            8.97857316E-14
+#   Asymmetry Factor (Î·):            1.44268797E-08
+
+# DATA_LINE (tab-separated):
+     6.0	     6.0	  2.4702	2s	3s	2p,2p3	[-6.85017E-06;-6.85003E-06]	-1.04543000E-05	-3.92996800E-06	 1.50000000E-13	 1.24470063E-05	 8.97857316E-14	`üÒBûN>
+	_scf
+
+
+===============================================================================
+# ENTRY #61 - Z=14, N=14.0, R=3.1224 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                  14.0
+#   Number of Neutrons (N):             14.0
+#   Nuclear Radius (R):               3.1224 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  3s
+#   Final State:                    4s
+#   Initial State Energy:           -9.69347100E-06 (relativistic units)
+#   Final State Energy:             -3.73620800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 3p, Energy: -5.83050200E-06
+#   State 2: 3p3, Energy: -5.82656500E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.73230245E-04
+#   Weak Amplitude (A_W):            2.44588852E-12
+#   Asymmetry Factor (Î·):            2.82385853E-08
+
+# DATA_LINE (tab-separated):
+    14.0	    14.0	  3.1224	3s	4s	3p,3p3	[-5.83050E-06;-5.82657E-06]	-9.69347100E-06	-3.73620800E-06	 1.50000000E-13	 1.73230245E-04	 2.44588852E-12	 È)R^>
+	_scf
+
+
+===============================================================================
+# ENTRY #1 - Z=14, N=14.0, R=3.1224 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                  14.0
+#   Number of Neutrons (N):             14.0
+#   Nuclear Radius (R):               3.1224 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  3s
+#   Final State:                    4s
+#   Initial State Energy:           -9.69347100E-06 (relativistic units)
+#   Final State Energy:             -3.73620800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 3p, Energy: -5.83050200E-06
+#   State 2: 3p3, Energy: -5.82656500E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.73230245E-04
+#   Weak Amplitude (A_W):            2.44588852E-12
+#   Asymmetry Factor (Î·):            2.82385853E-08
+
+# DATA_LINE (tab-separated):
+    14.0	    14.0	  3.1224	3s	4s	3p,3p3	[-5.83050E-06;-5.82657E-06]	-9.69347100E-06	-3.73620800E-06	 1.50000000E-13	 1.73230245E-04	 2.44588852E-12	 È)R^>
+	_scf
+
+
+===============================================================================
+# NEW ENTRY - Z=14, N=14.0, R=3.1224 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                  14.0
+#   Number of Neutrons (N):             14.0
+#   Nuclear Radius (R):               3.1224 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  3s
+#   Final State:                    4s
+#   Initial State Energy:           -9.69347100E-06 (relativistic units)
+#   Final State Energy:             -3.73620800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 3p, Energy: -5.83050200E-06
+#   State 2: 3p3, Energy: -5.82656500E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.73230245E-04
+#   Weak Amplitude (A_W):            2.44588852E-12
+#   Asymmetry Factor (Î·):            2.82385853E-08
+
+# SUMMARY:
+DATA: Z=14.0 N=14.0 R=3.1224 3s->4s Inter:3p,3p3 A_S= 1.73230245E-04 A_W= 2.44588852E-12 eta= 2.82385853E-08
+
+
