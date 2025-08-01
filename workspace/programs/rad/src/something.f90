@@ -117,7 +117,12 @@ program compute_radial_integrals
         print *, 'Cv_pZ_minus_N is : ', potential%Cv_pZ_minus_N
 
         ! Set filename to read radial functions from (for the 1st order case)
-        filename = './radial_function.dat'
+        print *, 'Enter the state you want to use for the 1st order calculation (e.g., 1s, 2s, 2p, 2p3, ...):'
+        read *, state_initial
+        write(z_str, '(I0)') nint(Z)
+        filename = '/home/sriman/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                   'single electron wavefunctions/' // trim(z_str) // '_polynomial_table_' // &
+                   trim(state_initial) // '.txt'
 
         ! -------------------------------------------------------------------------
         ! If user wants 1st order, do the old code exactly as is
@@ -214,10 +219,12 @@ program compute_radial_integrals
            ! Convert Z to string for filename
            write(z_str, '(I0)') nint(Z) ! nint(Z) converts Z to nearest integer
 
-           filename_n = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
-                        trim(z_str) // '_polynomial_table_' // trim(state_intermediate) // '.txt'
-           filename_s = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
-                        trim(z_str) // '_polynomial_table_' // trim(state_initial) // '.txt'
+           filename_n = '/home/sriman/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        'single electron wavefunctions/' // trim(z_str) // '_polynomial_table_' // &
+                        trim(state_intermediate) // '.txt'
+           filename_s = '/home/sriman/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/' // &
+                        'single electron wavefunctions/' // trim(z_str) // '_polynomial_table_' // &
+                        trim(state_initial) // '.txt'
            print *, 'Reading wave functions from:'
            print *, 'Intermediate state (', trim(state_intermediate), '): ', trim(filename_n)
            print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
@@ -349,10 +356,8 @@ program compute_radial_integrals
         write(z_str, '(I0)') nint(Z)
 
         ! Build filenames for initial and final states based on system type
-        filename_s = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/GRASP_rel/' // &
-                    trim(z_str) // '_' // trim(state_initial) // '_rel.txt'
-        filename_f = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/GRASP_rel/' // &
-                    trim(z_str) // '_' // trim(state_final) // '_rel.txt'
+        filename_s = './GRASP_rel/' // trim(z_str) // '_' // trim(state_initial) // '_rel.txt'
+        filename_f = './GRASP_rel/' // trim(z_str) // '_' // trim(state_final) // '_rel.txt'
 
         print *, 'Reading wave functions from:'
         print *, 'Initial state (', trim(state_initial), '): ', trim(filename_s)
@@ -393,8 +398,7 @@ program compute_radial_integrals
             print *, 'Processing intermediate state: ', trim(intermediate_states(i_state))
             
             ! Build filename for this intermediate state based on system type
-            filename_n = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/workspace/programs/rad/GRASP_rel/' // &
-                        trim(z_str) // '_' // trim(intermediate_states(i_state)) // '_rel.txt'
+            filename_n = './GRASP_rel/' // trim(z_str) // '_' // trim(intermediate_states(i_state)) // '_rel.txt'
             
             print *, 'Reading intermediate state from: ', trim(filename_n)
             
@@ -954,10 +958,10 @@ contains
         logical :: file_exists
         integer :: unit, ios, i, entry_number
         character(len=500) :: current_inter_states
-        
-        ! Create filename
-        amplitude_filename = '/home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int/amplitude_calculation_results.txt'
-        
+
+        ! Use a relative path for the results file
+        amplitude_filename = './amplitude_calculation_results.txt'
+
         ! Build intermediate states string for current calculation
         current_inter_states = ''
         do i = 1, num_inter
@@ -975,16 +979,17 @@ contains
         else
             entry_number = 1
         end if
-        
+
         ! Open file for writing (append if exists, create if not)
         open(newunit=unit, file=amplitude_filename, status='unknown', action='write', &
              position='append', iostat=ios)
-        
+
         if (ios /= 0) then
             print *, 'Error opening amplitude results file for writing. IOSTAT:', ios
+            print *, 'Check that the current directory is writeable and that the file is not locked.'
             return
         end if
-        
+
         ! Write entry separator and header
         write(unit, '(A)') '==============================================================================='
         write(unit, '(A, I0, A, F0.1, A, F0.4, A)') '# NEW ENTRY - Z=', nint(Z_val), ', N=', N_val, ', R=', R_fm_val, ' fm'

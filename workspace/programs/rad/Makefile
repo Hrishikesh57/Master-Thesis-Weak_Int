@@ -2,7 +2,7 @@ FC = gfortran
 FFLAGS = -Wall -O2
 FLIBS = -lbspwf -lbspgf -lbspqed -lslatec -llapack
 
-HOMDIR = /home/hrishikeshsriman-narayan/Documents/Masters/Master-Thesis--Weak_Int
+HOMDIR = /home/sriman/Documents/Masters/Master-Thesis--Weak_Int
 WRKDIR = $(HOMDIR)/workspace
 LIBDIR = $(WRKDIR)/include/lib
 MODDIR = $(WRKDIR)/include/mod

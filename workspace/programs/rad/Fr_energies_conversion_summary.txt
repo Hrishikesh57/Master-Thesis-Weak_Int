@@ -1,0 +1,10 @@
+Energy Conversion Summary
+========================
+Input file: Fr_energies.txt
+Output file: Fr_energies_rel.txt
+Conversion factor (α²): 5.325136080661e-05
+Fine structure constant (α): 7.297353000000e-03
+Total energy values converted: 12
+
+Conversion formula: E_relativistic = E_au × α²
+Units: atomic units → relativistic units (c=1, mₑ=1, ℏ=1)

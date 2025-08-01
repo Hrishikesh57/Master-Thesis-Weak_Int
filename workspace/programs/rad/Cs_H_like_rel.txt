@@ -1,0 +1,24 @@
+# =================================================================
+# Silicon 3+ (Si³⁺) Energy Levels in Relativistic Units
+# =================================================================
+# Converted from atomic units using α² = 5.325136e-05
+# Fine structure constant α = 7.297353e-03
+# Units: relativistic (c=1, m_e=1, ℏ=1)
+# =================================================================
+#
+# n    j     Energy (au)           Energy (rel units)        Ratio
+# --   ---   -----------           ------------------        -----
+# Energies of the valence states are ...
+# --------------------------------------------------------------------------------------
+  1s        9.159298e-01          4.877451e-05          5.325136e-05   
+  2s        9.787560e-01          5.212009e-05          5.325136e-05   
+  2p1/2     9.787551e-01          5.212004e-05          5.325136e-05   
+  2p3/2     9.796574e-01          5.216809e-05          5.325136e-05   
+#
+# =================================================================
+# Notes:
+# - These are binding energies (negative values)
+# - j-j coupling scheme used for relativistic calculations
+# - Si³⁺ has 11 electrons (Z=14, 3 electrons removed)
+# - Fine structure splitting visible in p, d, and f orbitals
+# =================================================================
