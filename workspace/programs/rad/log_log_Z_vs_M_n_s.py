@@ -1,10 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from pathlib import Path
 
-# Define the input file path
-file_path = '/home/sriman/Documents/Thesis/Z_Matrix_elements.txt'
-output_plot_path = '/home/sriman/Documents/Thesis/Z_vs_Mns_loglog.png'
+RAD_ROOT = Path(__file__).resolve().parent
+file_path = RAD_ROOT / 'outputs' / 'analysis' / 'Matrix_elements.txt'
+output_plot_path = RAD_ROOT / 'outputs' / 'plots' / 'Z_vs_Mns_loglog.png'
 
 # Check if the file exists
 if not os.path.exists(file_path):
@@ -61,6 +62,7 @@ try:
     plt.legend()
 
     # Save the plot
+    output_plot_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_plot_path)
     print(f"Plot saved to {output_plot_path}")
 

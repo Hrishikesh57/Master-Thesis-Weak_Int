@@ -13,6 +13,7 @@ program compute_radial_function_1s_2s
    character(len=2) :: state
    character(len=20) :: c_choice
    integer :: unit_number
+   character(len=256) :: output_file
    double precision, parameter :: zero_tol = 1.0d-300
    double precision, parameter :: pi_val = 3.14159265358979323846d0
    double precision :: c_val
@@ -90,8 +91,10 @@ program compute_radial_function_1s_2s
    npoints = 1000
    dr = (rmax - rmin) / (npoints - 1)
  
+   call ensure_directory('data/reference/radial_functions')
+   output_file = 'data/reference/radial_functions/radial_function.dat'
    unit_number = 10
-   open(unit=unit_number, file='radial_function.dat', status='unknown')
+   open(unit=unit_number, file=trim(output_file), status='unknown')
  
    write(unit=unit_number, fmt='(A)') 'r (a.u.)       r*g(r)         r*f(r)'
    print *, '   r (a.u.)       r*g(r)         r*f(r)'
@@ -183,12 +186,26 @@ program compute_radial_function_1s_2s
    end do
  
    close(unit_number)
-   print *, "Calculation complete. Data written to radial_function.dat"
+   print *, "Calculation complete. Data written to ", trim(output_file)
    print *, "E = " , E
    print *, "Lamda = ", lambda
    print * , "N1 = ", N1
  
- contains
+   contains
+
+   subroutine ensure_directory(dir_path)
+     implicit none
+     character(len=*), intent(in) :: dir_path
+     character(len=512) :: command
+     integer :: cmd_stat, exit_stat
+
+     command = 'mkdir -p "' // trim(dir_path) // '"'
+     call execute_command_line(trim(command), wait=.true., exitstat=exit_stat, cmdstat=cmd_stat)
+     if (cmd_stat /= 0 .or. exit_stat /= 0) then
+        print *, 'Error creating directory: ', trim(dir_path)
+        stop
+     end if
+   end subroutine ensure_directory
  
    !------------------------------------------------------------
    ! Gamma function

@@ -10,6 +10,26 @@ import sys
 import os
 from pathlib import Path
 
+RAD_ROOT = Path(__file__).resolve().parent
+SEARCH_DIRS = [
+    RAD_ROOT / "data" / "reference" / "radial_functions",
+    RAD_ROOT / "data" / "grasp" / "raw",
+    RAD_ROOT,
+]
+
+
+def resolve_input_path(input_file):
+    candidate = Path(input_file)
+    if candidate.exists():
+        return candidate
+
+    for directory in SEARCH_DIRS:
+        test_path = directory / candidate.name
+        if test_path.exists():
+            return test_path
+
+    return candidate
+
 
 def convert_to_relativistic_units(input_file, output_base=None):
     """
@@ -30,7 +50,8 @@ def convert_to_relativistic_units(input_file, output_base=None):
     # Read input file and handle Fortran double precision format
     try:
         # First, read the file as text and convert Fortran 'D' format to 'E' format
-        with open(input_file, 'r') as f:
+        input_path = resolve_input_path(input_file)
+        with open(input_path, 'r') as f:
             lines = f.readlines()
         
         # Convert Fortran double precision format (D+xx) to standard format (E+xx)
@@ -45,11 +66,11 @@ def convert_to_relativistic_units(input_file, output_base=None):
             # First try skipping the first row (in case of header)
             data_lines = converted_lines[1:]
             data = np.array([list(map(float, line.split())) for line in data_lines if line.strip()])
-            print(f"Successfully read {len(data)} data points from {input_file} (skipped header)")
+            print(f"Successfully read {len(data)} data points from {input_path} (skipped header)")
         except (ValueError, IndexError):
             # If that fails, try without skipping rows
             data = np.array([list(map(float, line.split())) for line in converted_lines if line.strip()])
-            print(f"Successfully read {len(data)} data points from {input_file}")
+            print(f"Successfully read {len(data)} data points from {input_path}")
             
     except Exception as e:
         print(f"Error reading file: {e}")
@@ -85,7 +106,6 @@ def convert_to_relativistic_units(input_file, output_base=None):
     
     # Determine output filenames
     if output_base is None:
-        input_path = Path(input_file)
         output_base = input_path.stem + "_relunits"
         output_dir = input_path.parent
     else:
@@ -119,9 +139,9 @@ def main():
                      "<input_file.dat> [output_base]")
         print(usage_msg)
         print("\nExample:")
-        print("  python convert_to_relativistic_units.py radial_function.dat")
+        print("  python convert_to_relativistic_units.py data/reference/radial_functions/radial_function.dat")
         example_msg = ("  python convert_to_relativistic_units.py "
-                       "radial_function.dat my_output")
+                       "data/reference/radial_functions/radial_function.dat my_output")
         print(example_msg)
         print("\nThis will create:")
         print("  - output_base.npz (numpy array file)")
@@ -130,13 +150,14 @@ def main():
     
     input_file = sys.argv[1]
     output_base = sys.argv[2] if len(sys.argv) > 2 else None
-    
-    if not os.path.exists(input_file):
+
+    resolved_input = resolve_input_path(input_file)
+    if not resolved_input.exists():
         print(f"Error: Input file '{input_file}' not found!")
         return
     
     try:
-        result = convert_to_relativistic_units(input_file, output_base)
+        result = convert_to_relativistic_units(str(resolved_input), output_base)
         r_rel, G_rel, F_rel, npz_file, txt_file = result
         print("\nConversion completed successfully!")
         print("Files created:")

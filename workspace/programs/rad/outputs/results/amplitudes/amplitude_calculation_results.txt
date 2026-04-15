@@ -1,0 +1,57 @@
+===============================================================================
+# CALCULATION ENTRY - Z=6, N=6.0, R=2.4702 fm
+===============================================================================
+
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                   6.0
+#   Number of Neutrons (N):              6.0
+#   Nuclear Radius (R):               2.4702 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  2s
+#   Final State:                    3s
+#   Initial State Energy:           -1.04543000E-05 (relativistic units)
+#   Final State Energy:             -3.92996800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 2p, Energy: -6.85016800E-06
+#   State 2: 2p3, Energy: -6.85003200E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.24470063E-05
+#   Weak Amplitude (A_W):            8.97857316E-14
+#   Asymmetry Factor (η):            1.44268797E-08
+
+
+
+
+===============================================================================
+#  - Z=14, N=14.0, R=3.1224 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                  14.0
+#   Number of Neutrons (N):             14.0
+#   Nuclear Radius (R):               3.1224 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  3s
+#   Final State:                    4s
+#   Initial State Energy:           -9.69347100E-06 (relativistic units)
+#   Final State Energy:             -3.73620800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 3p, Energy: -5.83050200E-06
+#   State 2: 3p3, Energy: -5.82656500E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.73230245E-04
+#   Weak Amplitude (A_W):            2.44588852E-12
+#   Asymmetry Factor (η):            2.82385853E-08
+
+
+
+

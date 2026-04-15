@@ -5,3 +5,9 @@ Element                              Initial State    Intermediate state        
 
 Z = 6 ( li like carbon )                 2s                 2p1/2             2.9455170040766764E-020
 Z = 14 ( Ne like Silicon)                3s                    3p1/2                 6.8257130626327693E-019
+
+
+ 5.396062 \times 10^{-9}
+ 
+ 
+  \rho_0  &= -1.9160380074 \times 10^{8}

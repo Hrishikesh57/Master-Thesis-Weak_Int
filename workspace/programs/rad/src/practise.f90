@@ -1,13 +1,12 @@
 program print_polynomial_table_relativistic
    use bspqed_dkb
    use bspqed_coefficients
-   use bspqed_utilities, only: meanr, kntseq1
+   use bspqed_utilities, only: kntseq1
    use bspqed_potentials, only: sphere_potential
    use bspqed_quadrature, only: nodes20, weights20
    use bspqed_physconsts        ! This module should define alpha and electron_rest_energy
    use bspwf_constants, only: bohr_radius
-   use bspwf_dirac, only: dirac
-   use bspwf_function, only: function_type
+   use bspwf_dirac, only: dirac, au_radialg => radialg, au_radialf => radialf
    use bspwf_hartree_fock, only: dhfc_dir_matrix, dhfc_matrix
    use bspwf_knots, only: knots_01
    use bspwf_potentials, only: fermi_potential
@@ -16,556 +15,525 @@ program print_polynomial_table_relativistic
 
    ! Constants
    double precision, parameter :: pi_local = 4.0d0 * atan(1.0d0)
- 
+   double precision, parameter :: output_rmax_rel = 200.0d0
+   character(len=*), parameter :: single_output_dir = 'outputs/wavefunctions/single_electron'
+   character(len=*), parameter :: scf_output_dir = 'outputs/wavefunctions/scf'
+   integer :: wavefunction_type
 
-   ! Variable declarations
-   character(len=10) :: state_str
-   character(len=5)  :: znucl_str ! Added to store Z as string
+   call prompt_wavefunction_type(wavefunction_type)
 
-   ! Other declarations
-   integer :: znucl, order, kappa, inbv, nmain, l
-   integer :: i, unit_num, iostat ! Added unit for energy file
-   integer :: npoints, nknots, nbspl, nintervals, ngl, nspectrum, na
-   integer :: npoints_output
-   double precision :: gx, fx, x
-   double precision, allocatable :: knots(:), coefs(:), nodes(:), weights(:)
-   double precision :: rnucl, rcavity, zalpha
-   double precision :: x_start, x_end, x_step
-   character(len=100) :: filename
-   double precision, allocatable :: spectrum(:), coefmat(:,:)
-   type(sphere_potential) :: potential
-   double precision :: rms_fm
-
-   ! New variables for multi-electron choice
-   integer :: wavefunction_type, num_electrons
-
-   ! Multi-electron SCF variables
-   integer :: ncores, nvalences, nbsplines
-   integer, dimension(:), allocatable :: core_kappas, core_nmains, valence_kappas, valence_nmains
-   double precision, dimension(:, :), allocatable :: core_coefficients, valence_coefficients
-   double precision, dimension(:), allocatable :: core_energies, valence_energies
-   double precision :: rms, afermi, cfermi, ecore_total
-   type(fermi_potential) :: nuclpot_scf
-   real :: start, finish
-
-   !-----------------------------------------------------------------------
-   ! Ask user to choose between single-electron and multi-electron wavefunctions
-   !-----------------------------------------------------------------------
-   print *, 'Choose the type of wavefunction calculation:'
-   print *, '1 - Single-electron wavefunctions'
-   print *, '2 - Multi-electron wavefunctions'
-   print *, 'Enter your choice (1 or 2):'
-   read(*,*) wavefunction_type
-
-   if (wavefunction_type /= 1 .and. wavefunction_type /= 2) then
-      print *, 'Error: Invalid choice. Please enter 1 or 2.'
-      stop
-   endif
-
-   if (wavefunction_type == 2) then
-      print *, 'Enter the number of electrons in the system (1-90):'
-      read(*,*) num_electrons
-      
-      ! Get atomic number and nuclear parameters
-      print *, 'Enter the atomic number Z:'
-      read(*,*) znucl
-      
-      if (num_electrons < 1 .or. num_electrons > znucl) then
-         print *, 'Error: Number of electrons must be between 1 and Z=', znucl
-         stop
-      endif
-      
-      if (num_electrons > 90) then
-         print *, 'Error: Number of electrons must be <= 90 for this implementation.'
-         stop
-      endif
-      
-      print *, 'Multi-electron calculation selected with', num_electrons, 'electrons.'
-      print *, 'This creates a ', trim(ion_name(znucl, num_electrons)), ' system.'
-
-      print *, 'Enter the nuclear RMS radius (in fm):'
-      read(*,*) rms_fm
-      rms = rms_fm ! Convert for SCF calculation
-
-      ! Get the state for wavefunction output
-      print *, 'Enter the state for wavefunction output (1s, 2s, 2p, 2p3, 3s, 3p, 3p3, 4s):'
-      read(*,*) state_str
-      
-      ! Parse the requested state
-      call parse_state(state_str, kappa, nmain, l)
-      
-      ! Setup electron configuration based on number of electrons
-      call setup_electron_configuration(num_electrons, nmain, kappa, core_kappas, core_nmains, &
-                                        valence_kappas, valence_nmains, ncores, nvalences)
-      
-      ! Display configuration
-      write (*, *) "# ", repeat("=", 86)
-      write (*, '(A,I0)') "# Atomic number Z = ", znucl
-      write (*, '(A,I0)') "# Number of electrons = ", num_electrons
-      write (*, '(A,F8.4)') "# Nuclear RMS radius = ", rms, " fm"
-      write (*, '(A,A)') "# Target state for output: ", trim(state_str)
-      write (*, *) "# Core electron configuration:"
-      do i = 1, ncores
-          write (*, '(A,I0,A,I0,A,I0)') "#   ", i, ": n=", core_nmains(i), ", kappa=", core_kappas(i)
-      end do
-      if (nvalences > 0) then
-          write (*, *) "# Valence electron configuration:"
-          do i = 1, nvalences
-              write (*, '(A,I0,A,I0,A,I0)') "#   ", i, ": n=", valence_nmains(i), ", kappa=", valence_kappas(i)
-          end do
-      endif
-      write (*, *) "# ", repeat("-", 86)
-      
-      ! Setup B-spline grid and nuclear potential for SCF
-      order = 9
-      npoints = 1000
-      nknots = npoints + 2 * (order - 1)
-      nbsplines = nknots - order
-      
-      allocate(knots(nknots))
-      
-      ! Nuclear potential parameters (Fermi distribution)
-      afermi = 2.3d0 / (4.0d0 * log(3.0d0)) / electron_reduced_compton
-      cfermi = sqrt((5.0d0 * (rms / electron_reduced_compton)**2 - 7.0d0 * (pi_local * afermi)**2) / 3.0d0) 
-      
-      ! Set nuclear radius for multi-electron case
-      rnucl = sqrt(5.d0/3.d0) * rms_fm / electron_reduced_compton
-      
-      rcavity = 2.5d0 / alpha
-      call kntseq1(rnucl, rcavity, npoints/10, order, knots)
-      
-      nuclpot_scf%znucl = znucl
-      nuclpot_scf%a = afermi
-      nuclpot_scf%c = cfermi
-      
-      ! Allocate arrays for SCF calculation
-      allocate(core_energies(ncores))
-      core_energies = 0.0d0
-      allocate(core_coefficients(2*nbsplines, ncores))
-      core_coefficients = 0.0d0
-      
-      ! Perform SCF calculation
-      print *, "# Starting SCF calculation for core electrons..."
-      call cpu_time(start)
-      call starting_solutions_scf(knots, order, nuclpot_scf, core_kappas, core_nmains, nodes10, weights10, &
-                                  core_energies, core_coefficients, .true.)
-      call cpu_time(finish)
-      
-      write (*, *) "# ", repeat("-", 86)
-      write (*, *) "# Starting approximations completed!"
-      write (*, '(A,F8.3,A)') "# Duration: ", finish - start, " seconds"
-      write (*, *) "# Core state energies:"
-      do i = 1, ncores
-          write (*, '(A,I0,A,I0,A,ES15.8)') "#   n=", core_nmains(i), ", kappa=", core_kappas(i), &
-                                           ", E=", core_energies(i)
-      end do
-      write (*, *) "# ", repeat("-", 86)
-      
-      call cpu_time(start)
-      call refining_solutions_scf(knots, order, nuclpot_scf, core_kappas, core_nmains, nodes10, weights10, &
-                                  core_energies, core_coefficients, .true.)
-      call cpu_time(finish)
-      
-      write (*, *) "# ", repeat("-", 86)
-      write (*, *) "# SCF refinement completed!"
-      write (*, '(A,F8.3,A)') "# Duration: ", finish - start, " seconds"
-      write (*, *) "# Final core state energies:"
-      do i = 1, ncores
-          write (*, '(A,I0,A,I0,A,ES15.8)') "#   n=", core_nmains(i), ", kappa=", core_kappas(i), &
-                                           ", E=", core_energies(i)
-      end do
-      
-      ! Calculate total core energy
-      ecore_total = total_core_energy_scf(knots, order, core_kappas, core_energies, core_coefficients, &
-                                          nodes10, weights10)
-      write (*, '(A,ES15.8)') "# Total core energy: ", ecore_total
-      write (*, *) "# ", repeat("-", 86)
-      
-      ! Handle valence electrons if any
-      if (nvalences > 0) then
-          allocate(valence_energies(nvalences))
-          valence_energies = 0.0d0
-          allocate(valence_coefficients(2*nbsplines, nvalences))
-          valence_coefficients = 0.0d0
-          
-          call valence_solutions_scf(knots, order, nuclpot_scf, core_kappas, core_coefficients, &
-                                     valence_kappas, valence_nmains, nodes10, weights10, &
-                                     valence_energies, valence_coefficients)
-          
-          write (*, *) "# Valence state energies:"
-          do i = 1, nvalences
-              write (*, '(A,I0,A,I0,A,ES15.8)') "#   n=", valence_nmains(i), ", kappa=", valence_kappas(i), &
-                                               ", E=", valence_energies(i)
-          end do
-          write (*, *) "# ", repeat("-", 86)
-      endif
-      
-      ! Extract target wavefunction and generate output
-      allocate(coefs(2 * nbsplines))
-      call extract_target_wavefunction_scf(kappa, nmain, core_kappas, core_nmains, core_coefficients, &
-                                           valence_kappas, valence_nmains, valence_coefficients, &
-                                           ncores, nvalences, coefs)
-
-        
-    
-      
-      ! Remove the sign correction for multi-electron case - SCF already has correct convention
-      
-      ! Create output filename
-      write(znucl_str, '(I0)') znucl
-      filename = trim(znucl_str) // '_scf_polynomial_table_' // trim(state_str) // '.txt'
-      unit_num = 10
-      open(unit=unit_num, file=filename, status='replace', action='write', iostat=iostat)
-      if (iostat /= 0) then
-          print *, 'Error opening file: ', trim(filename)
-          stop
-      else
-          print *, 'File opened successfully: ', trim(filename)
-      endif
-      
-      ! Write header
-      write(unit_num, '(A)') 'r (natural units, 1/MeV)    g_nk(r)           f_nk(r)'
-      write(unit_num, '(A,A)') '# State: ', trim(state_str)
-      write(unit_num, '(A,I0)') '# Z = ', znucl
-      write(unit_num, '(A,I0)') '# Number of electrons = ', num_electrons
-      write(unit_num, '(A,F8.4)') '# RMS radius = ', rms_fm
-      write(unit_num, '(A)') '#'
-      
-      ! Generate wavefunction data
-      npoints_output = 1000
-      x_start = 1.0d-6
-      x_end = 20.0d0
-      x_step = (x_end - x_start) / (npoints_output - 1)
-      
-      do i = 1, npoints_output
-          x = x_start + (i - 1) * x_step
-          inbv = 1
-          gx = radialg(knots, order, kappa, coefs, x, inbv)
-          fx = radialf(knots, order, kappa, coefs, x, inbv)
-          write(unit_num, '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)') x, gx, fx
-      end do
-      
-      close(unit_num)
-      
-      write (*, *) "# ", repeat("=", 86)
-      write (*, *) "# Multi-electron calculation completed successfully!"
-      write (*, '(A,A)') "# Wavefunction written to: ", trim(filename)
-      write (*, *) "# ", repeat("=", 86)
-      
-      ! Cleanup
-      deallocate(knots, coefs, core_energies, core_coefficients)
-      if (allocated(valence_energies)) deallocate(valence_energies, valence_coefficients)
-      deallocate(core_kappas, core_nmains)
-      if (allocated(valence_kappas)) deallocate(valence_kappas, valence_nmains)
-      
-      return
-   endif
-
-   !-----------------------------------------------------------------------
-   ! Single-electron calculation (existing code)
-   !-----------------------------------------------------------------------
-   print *, 'Single-electron calculation selected.'
-   
-   print *, 'Enter the value for znucl (atomic number Z):'
-   read(*,*) znucl
-
-   print *, 'Enter the state (choose among: 1s, 2s, 2p, 3p, 4p, 5p, 6p, 7p, 8p, 9p, 10p):'
-   read(*,*) state_str
-   if (state_str .eq. '1s') then
-      kappa = -1
-      nmain = 1
-      l = 0
-   elseif (state_str .eq. '2s') then
-      kappa = -1
-      nmain = 2
-      l = 0
-   elseif (state_str .eq. '3s') then
-      kappa = -1
-      nmain = 3
-      l =  0
-   elseif (state_str .eq. '4s') then
-      kappa = -1
-      nmain = 4
-      l =  0
-   elseif (state_str .eq. '2p') then
-      kappa = 1
-      nmain = 2
-      l = 1
-   elseif (state_str .eq. '2p3') then 
-      kappa = -2
-      nmain = 2
-      l = 1
-   elseif (state_str .eq. '3p') then
-      kappa = 1 
-      nmain = 3
-      l = 1 
-   elseif (state_str .eq. '4p') then
-      kappa = 1
-      nmain = 4
-      l = 1
-   elseif (state_str .eq. '5p') then
-      kappa = 1
-      nmain = 5 
-      l = 1 
-   elseif (state_str .eq. '6p') then
-      kappa = 1
-      nmain = 6
-      l = 1
-   elseif (state_str .eq. '7p') then
-      kappa = 1
-      nmain = 7
-      l = 1
-   elseif (state_str .eq. '8p') then
-      kappa = 1
-      nmain = 8
-      l = 1
-   elseif (state_str .eq. '9p') then
-      kappa = 1
-      nmain = 9
-      l = 1
-   elseif (state_str .eq. '10p') then
-      kappa = 1
-      nmain = 10
-      l = 1
-   elseif(state_str .eq. '11p') then 
-      kappa = 1
-      nmain = 11
-      l = 1
-   elseif(state_str .eq. '12p') then 
-      kappa = 1
-      nmain = 12
-      l = 1
-   elseif(state_str .eq. '13p') then 
-      kappa = 1
-      nmain = 13
-      l = 1
-   elseif(state_str .eq. '14p') then 
-      kappa = 1
-      nmain = 14
-      l = 1
-   elseif(state_str .eq. '15p') then 
-      kappa = 1
-      nmain = 15
-      l = 1
-   elseif(state_str .eq. '16p') then 
-      kappa = 1
-      nmain = 16
-      l = 1
-   elseif(state_str .eq. '17p') then 
-      kappa = 1
-      nmain = 17
-      l = 1
-   elseif(state_str .eq. '18p') then 
-      kappa = 1
-      nmain = 18
-      l = 1
-   elseif(state_str .eq. '19p') then 
-      kappa = 1
-      nmain = 19
-      l = 1
-   elseif(state_str .eq. '20p') then 
-      kappa = 1
-      nmain = 20
-      l = 1
-   elseif(state_str .eq. '5f') then 
-      kappa  = 3
-      nmain  = 5
-      l = 3
-   else
-      print *, 'Invalid state entered.'
-      stop
-   endif
-
-   print *, 'Enter the value for rms radius (in fm):'
-   read(*,*) rms_fm
-
-   if (znucl <= 0) then
-      print *, 'Error: znucl must be positive.'
-      stop
-   endif
-
-   ! Initialize other parameters
-   order  = 9
-   ! zalpha = Z * alpha (dimensionless)
-   zalpha = znucl * alpha
-
-   ! Define the nuclear radius for a uniform sphere:
-   !    rnucl = sqrt(5/3) * rms,
-   ! expressed now in natural length units.
-   rnucl = sqrt(5.d0/3.d0) * rms_fm / electron_reduced_compton
-
-   ! Choose a cavity (box) radius in natural units.
-   rcavity = 2.5d0 / alpha
-
-   ! B-spline grid:
-   npoints = 1000
-   nknots  = npoints + 2*(order - 1)
-   allocate(knots(nknots))
-   call kntseq1(rnucl, rcavity, npoints/10, order, knots)
-   nbspl      = nknots - order
-   nintervals = npoints - 1
-   if (knots(1) <= 0.0d0) knots(1) = 1.0d-6
-
-   ! Allocate arrays for coefficients and quadrature.
-   allocate(coefs(2 * nbspl))
-   ngl = 20
-   allocate(nodes(ngl), weights(ngl))
-   nodes   = nodes20
-   weights = weights20
-
-   nspectrum = 2 * (nbspl - 2)
-   print *, 'nspectrum = ', nspectrum
-   ! ----------------------------------------------------------------------
-   ! The array 'spectrum' now holds ALL positive‑energy eigenvalues in ascending order.
-   ! We split them into two “sub‑blocks” (negative/positive κ) of size nspectrum/2 each.
-   ! Within each block, the bound states appear in order of principal quantum number n.
-   ! Index of our chosen level (nmain, l) in the 'spectrum' array:
-
-   na = nspectrum/2 + (nmain - l)
-   allocate(spectrum(nspectrum))
-   allocate(coefmat(2 * nbspl, nspectrum))
-   
-   ! Define the nuclear potential.
-   potential%zalpha = zalpha
-   potential%rad    = rnucl
-
- ! ---------------------------------------------------------------------
-   ! Solve the Dirac equation H ψ = E ψ in a B‑spline basis *including*
-   ! finite‑size nuclear potential.  The subroutine “solve” does three things:
-   !
-   !  1) It constructs the Hamiltonian matrix
-   !       H_{ij} = < B_i | α·p + β m + V_Coulomb(r;R) | B_j >
-   !     and the overlap matrix
-   !       S_{ij} = < B_i | B_j >.
-   !
-   !  2) It then calls a LAPACK generalized‑eigenvalue solver (e.g. DSYGV)
-   !     to diagonalise the pair (H, S), solving
-   !         H · c = E · S · c
-   !     for all eigenvalues E and eigenvectors c.
-   !
-   !  3) On return, the array `spectrum(1:nspectrum)` contains the sorted
-   !     positive‑energy eigenvalues E_n, and `coefmat(:,n)` holds the
-   !     corresponding eigenvector c_n (the B‑spline coefficients).
-   !
-   ! Thus *this one call* performs the entire matrix diagonalisation for you.
-   ! You can then pick off the unperturbed 2s and 2p₁/₂ energies simply by
-   ! indexing into `spectrum(...)` as shown below.
-   ! ---------------------------------------------------------------------
-   call solve(knots, order, kappa, potential, nodes, weights, spectrum, coefmat)
-   ! Because we use a *finite‑size* nuclear potential, the exact Dirac degeneracy
-   ! between 2s and 2p1/2 is lifted: those two entries in 'spectrum' will differ slightly.
-   ! -----------------------------------------------------------------------
-   print *, 'Eigenvalue (energy) for chosen state = ', spectrum(na)
-
-   ! Use the selected eigenstate's coefficients.
-   coefs = coefmat(:, na)
-   if (state_str .eq. '1s') then
-      coefs = -coefs
-   endif
-
-   ! Write the computed wavefunctions to an output file.
-   ! Convert znucl to string
-   write(znucl_str, '(I0)') znucl
-   !Construct the filename including znucl
-   filename = trim(znucl_str) // '_polynomial_table_' // trim(state_str) // '.txt'
-   unit_num = 10
-   open(unit=unit_num, file=filename, status='replace', action='write', iostat=iostat)
-   if (iostat /= 0) then
-     print *, 'Error opening file: ', trim(filename)
-     stop
-   else
-     print *, 'File opened successfully: ', trim(filename)
-   endif
-
-   !Comment out the table header writing
-   write(unit_num, '(A)') 'r (natural units, 1/MeV)    g_nk(r)           f_nk(r)'
-   print *, '   r (natural units, 1/MeV)    g_nk(r)           f_nk(r)'
-
-   npoints_output = 1000
-   x_start = 1.0d-6
-   x_end   = 400.0d0
-   x_step  = (x_end - x_start) / (npoints_output - 1)
-
-   do i = 1, npoints_output
-      x = x_start + (i - 1)*x_step
-      inbv = 1
-      gx = radialg(knots, order, kappa, coefs, x, inbv)
-      fx = radialf(knots, order, kappa, coefs, x, inbv)
-
-      !Comment out the table data writing
-      write(unit_num, '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)') x, gx, fx
-      print '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)', x, gx, fx
-   end do
-
-   close(unit_num)
-
-   ! ! Write Z, RMS radius, and Energy to the state-specific file
-   ! unit_num_energy = 11 ! Choose a different unit number
-   ! filename_energy = 'Energy_states_' // trim(state_str) // '.txt'
-
-   ! ! Check if the file exists
-   ! inquire(file=filename_energy, exist=file_exists)
-
-   ! if (file_exists) then
-   !    ! File exists, open in append mode
-   !    open(unit=unit_num_energy, file=filename_energy, position='append', action='write', iostat=iostat)
-   ! else
-   !    ! File does not exist, open as new and write header
-   !    open(unit=unit_num_energy, file=filename_energy, status='new', action='write', iostat=iostat)
-   !    if (iostat == 0) then
-   !       write(unit_num_energy, '(A)') 'Z    RMS_Radius(fm)    Energy(natural units)' ! Write header only for new file
-   !    endif
-   ! endif
-
-   ! if (iostat /= 0) then
-   !    print *, 'Error opening energy file: ', trim(filename_energy)
-   !    ! Decide whether to stop or continue without writing
-   !    stop ! Stop if file cannot be opened/created
-   ! else
-   !    ! Write data: Z, R_fm, E_state
-   !    write(unit_num_energy, '(I5, 3X, F12.6, 3X, ES18.10E3)') znucl, rms_fm, spectrum(na)
-   !    close(unit_num_energy)
-   !    print *, 'Energy data written to: ', trim(filename_energy)
-   ! endif
-
-   deallocate(knots, coefs, nodes, weights, spectrum, coefmat)
+   select case (wavefunction_type)
+   case (1)
+       call run_single_electron_calculation()
+   case (2)
+       call run_multi_electron_calculation()
+   end select
 
 contains
 
-   !-----------------------------------------------------------------------
-   ! Parse State String
-   !-----------------------------------------------------------------------
+   subroutine prompt_wavefunction_type(wavefunction_type)
+       integer, intent(out) :: wavefunction_type
+
+       print *, 'Choose the type of wavefunction calculation:'
+       print *, '1 - Single-electron wavefunctions'
+       print *, '2 - Multi-electron wavefunctions'
+       print *, 'Enter your choice (1 or 2):'
+       read(*,*) wavefunction_type
+
+       if (wavefunction_type /= 1 .and. wavefunction_type /= 2) then
+           print *, 'Error: Invalid choice. Please enter 1 or 2.'
+           stop
+       endif
+   end subroutine prompt_wavefunction_type
+
+   subroutine run_single_electron_calculation()
+       integer :: znucl, order, kappa, nmain, l
+       integer :: nbspl, nspectrum, na
+       character(len=10) :: state_str
+       double precision :: rms_fm, rcavity
+       double precision, allocatable :: knots(:), coefs(:), nodes(:), weights(:)
+       double precision, allocatable :: spectrum(:), coefmat(:,:)
+       type(sphere_potential) :: potential
+
+       print *, 'Single-electron calculation selected.'
+       print *, 'Enter the value for znucl (atomic number Z):'
+       read(*,*) znucl
+
+       print *, 'Enter the state (choose among: 1s, 2s, 3s, 4s, 5s, 6s, 7s, 8s, 2p, 2p3, 3p, 4p, 5p, 6p, 6p3, 7p, 7p3, 8p, 9p, 10p):'
+       read(*,*) state_str
+       call parse_state(state_str, kappa, nmain, l)
+
+       print *, 'Enter the value for rms radius (in fm):'
+       read(*,*) rms_fm
+
+       if (znucl <= 0) then
+           print *, 'Error: znucl must be positive.'
+           stop
+       endif
+
+       call initialize_single_electron_problem(znucl, rms_fm, order, rcavity, knots, nodes, weights, potential)
+
+       nbspl = size(knots) - order
+       nspectrum = 2 * (nbspl - 2)
+       na = nspectrum / 2 + (nmain - l)
+
+       allocate(coefs(2 * nbspl))
+       allocate(spectrum(nspectrum))
+       allocate(coefmat(2 * nbspl, nspectrum))
+
+       print *, 'nspectrum = ', nspectrum
+       call solve(knots, order, kappa, potential, nodes, weights, spectrum, coefmat)
+       print *, 'Eigenvalue (energy) for chosen state = ', spectrum(na)
+
+       coefs = coefmat(:, na)
+       call enforce_phase_convention_single(knots, order, kappa, l, coefs)
+       call write_single_wavefunction_output(znucl, state_str, knots, order, kappa, coefs, rcavity)
+   end subroutine run_single_electron_calculation
+
+   subroutine run_multi_electron_calculation()
+       integer :: znucl, order, kappa, nmain, l
+       integer :: num_electrons, ncores, nvalences, nbsplines
+       integer, allocatable :: core_kappas(:), core_nmains(:), valence_kappas(:), valence_nmains(:)
+       double precision :: rms_fm, ecore_total, rcavity
+       double precision, allocatable :: knots(:), coefs(:), core_energies(:), valence_energies(:)
+       double precision, allocatable :: core_coefficients(:,:), valence_coefficients(:,:)
+       type(fermi_potential) :: nuclpot_scf
+       character(len=10) :: state_str
+       real :: start, finish
+
+       print *, 'Enter the number of electrons in the system (1-90):'
+       read(*,*) num_electrons
+
+       print *, 'Enter the atomic number Z:'
+       read(*,*) znucl
+
+       if (num_electrons < 1 .or. num_electrons > znucl) then
+           print *, 'Error: Number of electrons must be between 1 and Z=', znucl
+           stop
+       endif
+
+       if (num_electrons > 90) then
+           print *, 'Error: Number of electrons must be <= 90 for this implementation.'
+           stop
+       endif
+
+       print *, 'Multi-electron calculation selected with', num_electrons, 'electrons.'
+       print *, 'This creates a ', trim(ion_name(znucl, num_electrons)), ' system.'
+
+       print *, 'Enter the nuclear RMS radius (in fm):'
+       read(*,*) rms_fm
+
+       print *, 'Enter the state for wavefunction output (1s, 2s, 2p, 2p3, 3s, 3p, 3p3, 4s, 5s, 5p, 5p3, 6s, 6p, 6p3, 7s, 7p, 7p3, 8s):'
+       read(*,*) state_str
+       call parse_state(state_str, kappa, nmain, l)
+
+       call setup_electron_configuration(num_electrons, nmain, kappa, core_kappas, core_nmains, &
+                                         valence_kappas, valence_nmains, ncores, nvalences)
+       call print_configuration_summary(znucl, num_electrons, rms_fm, state_str, &
+                                        core_nmains, core_kappas, valence_nmains, valence_kappas)
+
+       call initialize_scf_problem(znucl, nmain, rms_fm, order, rcavity, knots, nuclpot_scf, nbsplines)
+
+       allocate(core_energies(ncores), core_coefficients(2 * nbsplines, ncores))
+       core_energies = 0.0d0
+       core_coefficients = 0.0d0
+
+       print *, "# Starting SCF calculation for core electrons..."
+       call cpu_time(start)
+       call starting_solutions_scf(knots, order, nuclpot_scf, core_kappas, core_nmains, nodes10, weights10, &
+                                   core_energies, core_coefficients, .true.)
+       call cpu_time(finish)
+
+       write (*, *) "# ", repeat("-", 86)
+       write (*, *) "# Starting approximations completed!"
+       write (*, '(A,F8.3,A)') "# Duration: ", finish - start, " seconds"
+       call print_energy_report('# Core state energies:', core_nmains, core_kappas, core_energies)
+       write (*, *) "# ", repeat("-", 86)
+
+       call cpu_time(start)
+       call refining_solutions_scf(knots, order, nuclpot_scf, core_kappas, core_nmains, nodes10, weights10, &
+                                   core_energies, core_coefficients, .true.)
+       call cpu_time(finish)
+
+       write (*, *) "# ", repeat("-", 86)
+       write (*, *) "# SCF refinement completed!"
+       write (*, '(A,F8.3,A)') "# Duration: ", finish - start, " seconds"
+       call print_energy_report('# Final core state energies:', core_nmains, core_kappas, core_energies)
+
+       ecore_total = total_core_energy_scf(knots, order, core_kappas, core_energies, core_coefficients, &
+                                           nodes10, weights10)
+       write (*, '(A,ES15.8,A,ES15.8)') "# Total core energy (au): ", ecore_total, &
+                                         ", Total core energy (rel): ", alpha**2 * ecore_total
+       write (*, *) "# ", repeat("-", 86)
+
+       allocate(valence_energies(nvalences), valence_coefficients(2 * nbsplines, nvalences))
+       valence_energies = 0.0d0
+       valence_coefficients = 0.0d0
+
+       if (nvalences > 0) then
+           call valence_solutions_scf(knots, order, nuclpot_scf, core_kappas, core_coefficients, &
+                                      valence_kappas, valence_nmains, nodes10, weights10, &
+                                      valence_energies, valence_coefficients)
+           call print_energy_report('# Valence state energies:', valence_nmains, valence_kappas, valence_energies)
+           write (*, *) "# ", repeat("-", 86)
+       endif
+
+       allocate(coefs(2 * nbsplines))
+       call extract_target_wavefunction_scf(kappa, nmain, core_kappas, core_nmains, core_coefficients, &
+                                            valence_kappas, valence_nmains, valence_coefficients, &
+                                            ncores, nvalences, coefs)
+       call enforce_phase_convention_scf(knots, order, kappa, l, coefs)
+       call write_scf_wavefunction_output(znucl, num_electrons, rms_fm, state_str, knots, order, kappa, coefs, rcavity)
+   end subroutine run_multi_electron_calculation
+
+   !> Build the single-electron B-spline problem in relativistic units.
+   !> The later call to `solve()` performs the full generalized eigensystem
+   !> diagonalization for the finite-size nuclear Dirac Hamiltonian.
+   subroutine initialize_single_electron_problem(znucl, rms_fm, order, rcavity, knots, nodes, weights, potential)
+       integer, intent(in) :: znucl
+       integer, intent(out) :: order
+       double precision, intent(in) :: rms_fm
+       double precision, intent(out) :: rcavity
+       double precision, allocatable, intent(out) :: knots(:), nodes(:), weights(:)
+       type(sphere_potential), intent(out) :: potential
+
+       integer :: npoints, nknots
+       double precision :: rnucl
+
+       order = 9
+       rnucl = sqrt(5.d0 / 3.d0) * rms_fm / electron_reduced_compton
+       rcavity = 2.5d0 / alpha
+
+       npoints = 1000
+       nknots = npoints + 2 * (order - 1)
+       allocate(knots(nknots))
+       call kntseq1(rnucl, rcavity, npoints / 10, order, knots)
+       if (knots(1) <= 0.0d0) knots(1) = 1.0d-6
+
+       allocate(nodes(size(nodes20)), weights(size(weights20)))
+       nodes = nodes20
+       weights = weights20
+
+       potential%zalpha = znucl * alpha
+       potential%rad = rnucl
+   end subroutine initialize_single_electron_problem
+
+   !> Build the SCF knot grid and Fermi potential in atomic units.
+   !> The Fermi radius is computed in fm first and then converted to bohr so
+   !> the Dirac and Hartree-Fock routines use a consistent length scale.
+   subroutine initialize_scf_problem(znucl, nmain, rms_fm, order, rcavity, knots, nuclpot_scf, nbsplines)
+       integer, intent(in) :: znucl, nmain
+       integer, intent(out) :: order, nbsplines
+       double precision, intent(in) :: rms_fm
+       double precision, intent(out) :: rcavity
+       double precision, allocatable, intent(out) :: knots(:)
+       type(fermi_potential), intent(out) :: nuclpot_scf
+
+       integer :: npoints, nknots
+       double precision :: afermi_fm, cfermi_fm
+
+       order = 9
+       npoints = 100
+       nknots = npoints + 2 * (order - 1)
+       nbsplines = nknots - order
+
+       allocate(knots(nknots))
+       knots = 0.0d0
+
+       afermi_fm = 2.3d0 / (4.0d0 * log(3.0d0))
+       cfermi_fm = sqrt((5.0d0 * rms_fm**2 - 7.0d0 * (pi_local * afermi_fm)**2) / 3.0d0)
+       rcavity = choose_scf_rcavity(nmain)
+
+       call knots_01(cfermi_fm / bohr_radius, rcavity, npoints / 10, order, knots)
+       nuclpot_scf%znucl = znucl
+       nuclpot_scf%a = afermi_fm / bohr_radius
+       nuclpot_scf%c = cfermi_fm / bohr_radius
+   end subroutine initialize_scf_problem
+
+   subroutine print_configuration_summary(znucl, num_electrons, rms_fm, state_str, core_nmains, core_kappas, &
+                                          valence_nmains, valence_kappas)
+       integer, intent(in) :: znucl, num_electrons
+       integer, dimension(:), intent(in) :: core_nmains, core_kappas, valence_nmains, valence_kappas
+       double precision, intent(in) :: rms_fm
+       character(len=*), intent(in) :: state_str
+
+       write (*, *) "# ", repeat("=", 86)
+       write (*, '(A,I0)') "# Atomic number Z = ", znucl
+       write (*, '(A,I0)') "# Number of electrons = ", num_electrons
+       write (*, '(A,F8.4)') "# Nuclear RMS radius = ", rms_fm, " fm"
+       write (*, '(A,A)') "# Target state for output: ", trim(state_str)
+       call print_shells('# Core electron configuration:', core_nmains, core_kappas)
+       if (size(valence_nmains) > 0) call print_shells('# Valence electron configuration:', valence_nmains, valence_kappas)
+       write (*, *) "# ", repeat("-", 86)
+   end subroutine print_configuration_summary
+
+   subroutine print_shells(title, nmains, kappas)
+       character(len=*), intent(in) :: title
+       integer, dimension(:), intent(in) :: nmains, kappas
+
+       integer :: i
+
+       write (*, '(A)') trim(title)
+       do i = 1, size(nmains)
+           write (*, '(A,I0,A,I0,A,I0)') "#   ", i, ": n=", nmains(i), ", kappa=", kappas(i)
+       end do
+   end subroutine print_shells
+
+   subroutine print_energy_report(title, nmains, kappas, energies)
+       character(len=*), intent(in) :: title
+       integer, dimension(:), intent(in) :: nmains, kappas
+       double precision, dimension(:), intent(in) :: energies
+
+       integer :: i
+
+       write (*, '(A)') trim(title)
+       do i = 1, size(energies)
+           write (*, '(A,I0,A,I0,A,ES15.8,A,ES15.8)') "#   n=", nmains(i), ", kappa=", kappas(i), &
+                                                       ", E_au=", energies(i), ", E_rel=", alpha**2 * energies(i)
+       end do
+   end subroutine print_energy_report
+
+   subroutine open_wavefunction_output_file(output_dir, file_tag, znucl, state_str, unit_num, filename)
+       character(len=*), intent(in) :: output_dir, file_tag, state_str
+       integer, intent(in) :: znucl
+       integer, intent(out) :: unit_num
+       character(len=256), intent(out) :: filename
+
+       character(len=16) :: znucl_str
+       integer :: iostat
+
+       call ensure_directory(output_dir)
+       write(znucl_str, '(I0)') znucl
+       filename = trim(output_dir) // '/' // trim(znucl_str) // '_' // trim(file_tag) // '_' // trim(state_str) // '.txt'
+       open(newunit=unit_num, file=filename, status='replace', action='write', iostat=iostat)
+       if (iostat /= 0) then
+           print *, 'Error opening file: ', trim(filename)
+           stop
+       endif
+
+       print *, 'File opened successfully: ', trim(filename)
+   end subroutine open_wavefunction_output_file
+
+   subroutine write_single_wavefunction_output(znucl, state_str, knots, order, kappa, coefs, rcavity)
+       integer, intent(in) :: znucl, order, kappa
+       character(len=*), intent(in) :: state_str
+       double precision, intent(in) :: rcavity
+       double precision, dimension(:), intent(in) :: knots, coefs
+
+       integer :: i, inbv, unit_num
+       integer, parameter :: npoints_output = 1000
+       character(len=256) :: filename
+       double precision :: gx, fx, x, x_start, x_end, x_step
+
+       call open_wavefunction_output_file(single_output_dir, 'polynomial_table', znucl, state_str, unit_num, filename)
+
+       write(unit_num, '(A)') 'r (relativistic units, m_e=1)    G(r)           F(r)'
+       print *, '   r (relativistic units, m_e=1)    G(r)           F(r)'
+
+       x_start = 1.0d-6
+       x_end = min(output_rmax_rel, rcavity - 1.0d-6)
+       x_step = (x_end - x_start) / (npoints_output - 1)
+
+       do i = 1, npoints_output
+           x = x_start + (i - 1) * x_step
+           inbv = 1
+           gx = radialg(knots, order, kappa, coefs, x, inbv)
+           fx = radialf(knots, order, kappa, coefs, x, inbv)
+           write(unit_num, '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)') x, gx, fx
+           print '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)', x, gx, fx
+       end do
+
+       close(unit_num)
+   end subroutine write_single_wavefunction_output
+
+   !> Write the SCF orbital on a logarithmic atomic-unit grid.
+   !> Conversion to relativistic units is deferred to the final formatting
+   !> step so the internal evaluation stays in atomic units.
+   subroutine write_scf_wavefunction_output(znucl, num_electrons, rms_fm, state_str, knots, order, kappa, coefs, rcavity)
+       integer, intent(in) :: znucl, num_electrons, order, kappa
+       character(len=*), intent(in) :: state_str
+       double precision, intent(in) :: rms_fm, rcavity
+       double precision, dimension(:), intent(in) :: knots, coefs
+
+       integer :: i, inbv, unit_num
+       integer, parameter :: npoints_output = 2000
+       character(len=256) :: filename
+       double precision :: gx, fx, x_au, x_nat, scale
+       double precision :: x_start, x_end, log_x_start, log_x_end, log_x_step
+
+       call open_wavefunction_output_file(scf_output_dir, 'scf_polynomial_table', znucl, state_str, unit_num, filename)
+
+       write(unit_num, '(A)') 'r (relativistic units, m_e=1)    G(r)           F(r)'
+       write(unit_num, '(A,A)') '# State: ', trim(state_str)
+       write(unit_num, '(A,I0)') '# Z = ', znucl
+       write(unit_num, '(A,I0)') '# Number of electrons = ', num_electrons
+       write(unit_num, '(A,F8.4)') '# RMS radius = ', rms_fm
+       write(unit_num, '(A)') '#'
+
+       x_start = 1.0d-6
+       x_end = rcavity - 1.0d-6
+       log_x_start = log(x_start)
+       log_x_end = log(x_end)
+       log_x_step = (log_x_end - log_x_start) / (npoints_output - 1)
+       scale = sqrt(alpha)
+
+       do i = 1, npoints_output
+           x_au = exp(log_x_start + (i - 1) * log_x_step)
+           inbv = 1
+           gx = scale * au_radialg(knots, order, kappa, coefs, x_au, inbv)
+           fx = scale * au_radialf(knots, order, kappa, coefs, x_au, inbv)
+           x_nat = x_au / alpha
+           write(unit_num, '(F12.6, 3X, ES18.10E3, 3X, ES18.10E3)') x_nat, gx, fx
+       end do
+
+       close(unit_num)
+
+       write (*, *) "# ", repeat("=", 86)
+       write (*, *) "# Multi-electron calculation completed successfully!"
+       write (*, '(A,A)') "# Wavefunction written to: ", trim(filename)
+       write (*, *) "# ", repeat("=", 86)
+   end subroutine write_scf_wavefunction_output
+
+   !> Choose an SCF cavity radius large enough for diffuse high-n states.
+   double precision function choose_scf_rcavity(nmain)
+       integer, intent(in) :: nmain
+
+       choose_scf_rcavity = max(50.0d0, 4.0d0 * dble(nmain * nmain))
+   end function choose_scf_rcavity
+
+   subroutine ensure_directory(dir_path)
+       implicit none
+       character(len=*), intent(in) :: dir_path
+       character(len=512) :: command
+       integer :: cmd_stat, exit_stat
+
+       command = 'mkdir -p "' // trim(dir_path) // '"'
+       call execute_command_line(trim(command), wait=.true., exitstat=exit_stat, cmdstat=cmd_stat)
+       if (cmd_stat /= 0 .or. exit_stat /= 0) then
+           print *, 'Error creating directory: ', trim(dir_path)
+           stop
+       end if
+   end subroutine ensure_directory
+
+   !> Enforce a deterministic phase convention for single-electron output.
+   subroutine enforce_phase_convention_single(knots, order, kappa, l, coefs)
+       double precision, dimension(:), intent(in) :: knots
+       integer, intent(in) :: order, kappa, l
+       double precision, dimension(:), intent(in out) :: coefs
+
+       double precision :: desired_sign, xref, gref
+       integer :: inbv, itry
+
+       desired_sign = 1.0d0
+       if (mod(l, 2) == 1) desired_sign = -1.0d0
+
+       xref = 5.0d-2
+       gref = 0.0d0
+       do itry = 1, 20
+           inbv = 1
+           gref = radialg(knots, order, kappa, coefs, xref, inbv)
+           if (abs(gref) > 1.0d-14) exit
+           xref = min(2.0d0 * xref, 5.0d0)
+       end do
+
+       if (desired_sign * gref < 0.0d0) coefs = -coefs
+   end subroutine enforce_phase_convention_single
+
+   !> Enforce a deterministic phase convention for SCF output.
+   subroutine enforce_phase_convention_scf(knots, order, kappa, l, coefs)
+       double precision, dimension(:), intent(in) :: knots
+       integer, intent(in) :: order, kappa, l
+       double precision, dimension(:), intent(in out) :: coefs
+
+       double precision :: desired_sign, xref, gref
+       integer :: inbv, itry
+
+       desired_sign = 1.0d0
+       if (mod(l, 2) == 1) desired_sign = -1.0d0
+
+       xref = 5.0d-2 * alpha
+       gref = 0.0d0
+       do itry = 1, 20
+           inbv = 1
+           gref = au_radialg(knots, order, kappa, coefs, xref, inbv)
+           if (abs(gref) > 1.0d-14) exit
+           xref = min(2.0d0 * xref, 5.0d0 * alpha)
+       end do
+
+       if (desired_sign * gref < 0.0d0) coefs = -coefs
+   end subroutine enforce_phase_convention_scf
+
+   !> Parse a spectroscopic state label into `kappa`, `nmain`, and `l`.
    subroutine parse_state(state_str, kappa, nmain, l)
        character(len=*), intent(in) :: state_str
        integer, intent(out) :: kappa, nmain, l
-       
-       select case (trim(state_str))
-       case ('1s')
-           kappa = -1; nmain = 1; l = 0
-       case ('2s')
-           kappa = -1; nmain = 2; l = 0
-       case ('3s')
-           kappa = -1; nmain = 3; l = 0
-       case ('4s')
-           kappa = -1; nmain = 4; l = 0
-       case ('2p', '2p1')
-           kappa = 1; nmain = 2; l = 1
-       case ('2p3')
-           kappa = -2; nmain = 2; l = 1
-       case ('3p', '3p1')
-           kappa = 1; nmain = 3; l = 1
-       case ('3p3')
-           kappa = -2; nmain = 3; l = 1
+
+       integer :: split_idx, ios
+       character(len=32) :: state, suffix
+
+       state = to_lower_copy(adjustl(trim(state_str)))
+       split_idx = scan(state, 'spdf')
+       if (split_idx <= 1) then
+           call stop_invalid_state(state_str)
+       endif
+
+       read(state(:split_idx - 1), *, iostat=ios) nmain
+       if (ios /= 0) then
+           call stop_invalid_state(state_str)
+       endif
+
+       suffix = trim(state(split_idx:))
+       select case (suffix)
+       case ('s')
+           l = 0
+           kappa = -1
+       case ('p', 'p1')
+           l = 1
+           kappa = 1
+       case ('p3')
+           l = 1
+           kappa = -2
+       case ('d', 'd3')
+           l = 2
+           kappa = 2
+       case ('d5')
+           l = 2
+           kappa = -3
+       case ('f', 'f5')
+           l = 3
+           kappa = 3
+       case ('f7')
+           l = 3
+           kappa = -4
        case default
-           print *, 'Invalid state: ', trim(state_str)
-           print *, 'Valid states: 1s, 2s, 2p, 2p3, 3s, 3p, 3p3, 4s'
-           stop
+           call stop_invalid_state(state_str)
        end select
+
+       if (nmain <= l) call stop_invalid_state(state_str)
    end subroutine parse_state
 
-   !-----------------------------------------------------------------------
-   ! Get ion name for display
-   !-----------------------------------------------------------------------
+   function to_lower_copy(text) result(lowered)
+       character(len=*), intent(in) :: text
+       character(len=len(text)) :: lowered
+
+       integer :: i, code
+
+       lowered = text
+       do i = 1, len(text)
+           code = iachar(lowered(i:i))
+           if (code >= iachar('A') .and. code <= iachar('Z')) lowered(i:i) = achar(code + 32)
+       end do
+   end function to_lower_copy
+
+   subroutine stop_invalid_state(state_str)
+       character(len=*), intent(in) :: state_str
+
+       print *, 'Invalid state: ', trim(state_str)
+       print *, 'Use labels such as 1s, 2p, 2p3, 4d, 4d5, 5f, or 5f7.'
+       stop
+   end subroutine stop_invalid_state
+
+   !> Return a compact ion label for terminal output.
    function ion_name(z, nelec) result(name)
        integer, intent(in) :: z, nelec
        character(len=20) :: name
@@ -591,9 +559,10 @@ contains
        endif
    end function ion_name
 
-   !-----------------------------------------------------------------------
-   ! Setup Electron Configuration (Fixed for proper multi-electron systems)
-   !-----------------------------------------------------------------------
+   !> Build the occupied shell list for the requested electron count.
+   !> The shells follow a relativistic Aufbau ordering up to 8s, with
+   !> capacities given by `2*abs(kappa)`. The target shell is forced into the
+   !> returned configuration even when it is the first unfilled shell.
    subroutine setup_electron_configuration(num_electrons, target_nmain, target_kappa, &
                                           core_kappas, core_nmains, &
                                           valence_kappas, valence_nmains, &
@@ -602,115 +571,76 @@ contains
        integer, dimension(:), allocatable, intent(out) :: core_kappas, core_nmains
        integer, dimension(:), allocatable, intent(out) :: valence_kappas, valence_nmains
        integer, intent(out) :: ncores, nvalences
-       
-       integer :: electrons_left, n, kap, shell_capacity, electrons_in_shell
+
+       integer, parameter :: max_aufbau = 32
+       integer, dimension(max_aufbau), parameter :: aufbau_n = (/ &
+           1, &                                       ! 1s
+           2, 2, 2, &                                 ! 2s, 2p1/2, 2p3/2
+           3, 3, 3, &                                 ! 3s, 3p1/2, 3p3/2
+           4, 3, 3, 4, 4, &                           ! 4s, 3d3/2, 3d5/2, 4p1/2, 4p3/2
+           5, 4, 4, 5, 5, &                           ! 5s, 4d3/2, 4d5/2, 5p1/2, 5p3/2
+           6, 4, 4, 5, 5, 6, 6, &                     ! 6s, 4f5/2, 4f7/2, 5d3/2, 5d5/2, 6p1/2, 6p3/2
+           7, 5, 5, 6, 6, 7, 7, &                     ! 7s, 5f5/2, 5f7/2, 6d3/2, 6d5/2, 7p1/2, 7p3/2
+           8 /)                                        ! 8s
+       integer, dimension(max_aufbau), parameter :: aufbau_kappa = (/ &
+          -1, &                                        ! 1s
+          -1,  1, -2, &                                ! 2s, 2p1/2, 2p3/2
+          -1,  1, -2, &                                ! 3s, 3p1/2, 3p3/2
+          -1,  2, -3,  1, -2, &                        ! 4s, 3d3/2, 3d5/2, 4p1/2, 4p3/2
+          -1,  2, -3,  1, -2, &                        ! 5s, 4d3/2, 4d5/2, 5p1/2, 5p3/2
+          -1,  3, -4,  2, -3,  1, -2, &                ! 6s, 4f5/2, 4f7/2, 5d3/2, 5d5/2, 6p1/2, 6p3/2
+          -1,  3, -4,  2, -3,  1, -2, &                ! 7s, 5f5/2, 5f7/2, 6d3/2, 6d5/2, 7p1/2, 7p3/2
+          -1 /)                                         ! 8s
+
+       integer :: electrons_left, shell_capacity, electrons_in_shell, idx, i
        logical :: target_found
-       integer, dimension(20) :: temp_core_kappas, temp_core_nmains
-       
+       integer, dimension(max_aufbau) :: temp_core_kappas, temp_core_nmains
+
        ncores = 0
        electrons_left = num_electrons
        target_found = .false.
-       
-       ! Fill shells in proper aufbau order
-       ! For each n, we have valid kappa values: -1, -2, ..., -(n), 1, 2, ..., (n-1)
-       ! But we must exclude kappa=n for any n (no states with j=n+1/2 exist)
-       
-       shell_loop: do n = 1, 10
-           ! Process s states (kappa = -1)
-           if (n >= 1) then
-               kap = -1
-               shell_capacity = 2 * abs(kap)  ! 2 electrons
-               electrons_in_shell = min(electrons_left, shell_capacity)
-               
-               if (electrons_in_shell > 0 .or. (n == target_nmain .and. kap == target_kappa)) then
-                   ncores = ncores + 1
-                   temp_core_nmains(ncores) = n
-                   temp_core_kappas(ncores) = kap
-                   
-                   if (n == target_nmain .and. kap == target_kappa) then
-                       target_found = .true.
-                   endif
-                   
-                   if (electrons_in_shell > 0) then
-                       electrons_left = electrons_left - electrons_in_shell
-                   endif
+
+       do idx = 1, max_aufbau
+           shell_capacity = 2 * abs(aufbau_kappa(idx))
+           electrons_in_shell = min(electrons_left, shell_capacity)
+
+           if (electrons_in_shell > 0 .or. &
+               (aufbau_n(idx) == target_nmain .and. aufbau_kappa(idx) == target_kappa)) then
+               ncores = ncores + 1
+               temp_core_nmains(ncores) = aufbau_n(idx)
+               temp_core_kappas(ncores) = aufbau_kappa(idx)
+
+               if (aufbau_n(idx) == target_nmain .and. aufbau_kappa(idx) == target_kappa) then
+                   target_found = .true.
                endif
+
+               electrons_left = electrons_left - electrons_in_shell
            endif
-           
-           ! Process p states (kappa = 1, -2) for n >= 2
-           if (n >= 2) then
-               ! p1/2 states (kappa = 1)
-               kap = 1
-               shell_capacity = 2 * abs(kap)  ! 2 electrons
-               electrons_in_shell = min(electrons_left, shell_capacity)
-               
-               if (electrons_in_shell > 0 .or. (n == target_nmain .and. kap == target_kappa)) then
-                   ncores = ncores + 1
-                   temp_core_nmains(ncores) = n
-                   temp_core_kappas(ncores) = kap
-                   
-                   if (n == target_nmain .and. kap == target_kappa) then
-                       target_found = .true.
-                   endif
-                   
-                   if (electrons_in_shell > 0) then
-                       electrons_left = electrons_left - electrons_in_shell
-                   endif
-               endif
-               
-               ! p3/2 states (kappa = -2)
-               kap = -2
-               shell_capacity = 2 * abs(kap)  ! 4 electrons
-               electrons_in_shell = min(electrons_left, shell_capacity)
-               
-               if (electrons_in_shell > 0 .or. (n == target_nmain .and. kap == target_kappa)) then
-                   ncores = ncores + 1
-                   temp_core_nmains(ncores) = n
-                   temp_core_kappas(ncores) = kap
-                   
-                   if (n == target_nmain .and. kap == target_kappa) then
-                       target_found = .true.
-                   endif
-                   
-                   if (electrons_in_shell > 0) then
-                       electrons_left = electrons_left - electrons_in_shell
-                   endif
-               endif
-           endif
-           
-           ! Add d and f states for higher n if needed...
-           
-           ! Stop when we've placed all electrons and found target
-           if (electrons_left <= 0 .and. target_found) exit shell_loop
-       end do shell_loop
-       
+
+           if (electrons_left <= 0 .and. target_found) exit
+       end do
+
        if (.not. target_found) then
            print *, 'Error: Target state not reachable with given electron configuration'
            print *, 'Target: n=', target_nmain, ', kappa=', target_kappa
            stop
        endif
-       
-       ! Debug output
+
        print *, '# Debug: Configuration setup for', num_electrons, 'electrons:'
        do i = 1, ncores
            print *, '#   Shell', i, ': n=', temp_core_nmains(i), ', kappa=', temp_core_kappas(i)
        end do
-       
-       ! For this implementation, treat everything as core (no valence separation)
+
        nvalences = 0
-       
-       ! Allocate and copy
+
        allocate(core_kappas(ncores), core_nmains(ncores))
        core_kappas(1:ncores) = temp_core_kappas(1:ncores)
        core_nmains(1:ncores) = temp_core_nmains(1:ncores)
-       
-       ! Allocate empty valence arrays
+
        allocate(valence_kappas(0), valence_nmains(0))
    end subroutine setup_electron_configuration
 
-   !-----------------------------------------------------------------------
-   ! Extract Target Wavefunction from SCF results
-   !-----------------------------------------------------------------------
+   !> Extract the requested orbital coefficients from the SCF result arrays.
    subroutine extract_target_wavefunction_scf(target_kappa, target_nmain, &
                                               core_kappas, core_nmains, core_coefficients, &
                                               valence_kappas, valence_nmains, valence_coefficients, &
@@ -727,7 +657,6 @@ contains
        
        found = .false.
        
-       ! Check core states first
        do i = 1, ncores
            if (core_kappas(i) == target_kappa .and. core_nmains(i) == target_nmain) then
                coefs = core_coefficients(:, i)
@@ -737,7 +666,6 @@ contains
            endif
        end do
        
-       ! Check valence states if not found in core
        if (.not. found .and. nvalences > 0) then
            do i = 1, nvalences
                if (valence_kappas(i) == target_kappa .and. valence_nmains(i) == target_nmain) then
@@ -755,9 +683,8 @@ contains
        endif
    end subroutine extract_target_wavefunction_scf
 
-   !-----------------------------------------------------------------------
-   ! SCF subroutines (adapted from dhfc.f90)
-   !-----------------------------------------------------------------------
+   !> Generate the initial SCF orbitals by starting from the bare nuclear
+   !> potential and then iterating with damped direct Hartree-Fock updates.
    subroutine starting_solutions_scf(knots, order, potential_scf, core_kappas, core_nmains, nodes, weights, &
                                      core_energies, core_coefficients, print_output)
        double precision, dimension(:), intent(in) :: knots
@@ -786,7 +713,6 @@ contains
        ncores = size(core_kappas)
        nspectrum = 2 * (size(knots) - order - 2)
 
-       ! Initial step without electron-electron interactions
        step = 1
        do i = 1, ncores
            kapb = core_kappas(i)
@@ -795,7 +721,6 @@ contains
            call dirac(knots, order, kapb, potential_scf, nodes, weights, spectrum, coefmat, hfmat=hfdir(:, :, i))
            lb = (abs(2 * kapb + 1) - 1) / 2
            nb = nspectrum / 2 + nmnb - lb
-           ! For the binding energy of the electron in the SCF
            epsb = spectrum(nb) - ialpha**2
            coefb = coefmat(:, nb)
            core_coefficients(:, i) = coefb
@@ -804,7 +729,6 @@ contains
        end do
        if (print_output) write (*, *) ""
 
-       ! SCF iterations
        do step = 2, maxstep
            prev_core_coefs = core_coefficients
            do i = 1, ncores
@@ -832,7 +756,6 @@ contains
            end do
            if (print_output) write (*, *) ""
 
-           ! Check convergence
            if (step > 2) then
                do i = 1, ncores
                    relerrs(i) = abs((epsbs(i, 1) - epsbs(i, 2)) / epsbs(i, 2))
@@ -850,6 +773,8 @@ contains
        core_energies = epsbs(:, 2)
    end subroutine starting_solutions_scf
 
+   !> Refine the SCF solution by repeatedly updating the most slowly
+   !> converging orbital until the energy tolerance is met.
    subroutine refining_solutions_scf(knots, order, potential_scf, core_kappas, core_nmains, nodes, weights, &
                                      core_energies, core_coefficients, print_output)
        double precision, dimension(:), intent(in) :: knots
@@ -877,7 +802,6 @@ contains
        ncores = size(core_kappas)
        nspectrum = 2 * (size(knots) - order - 2)
 
-       ! Initial steps
        do step = 1, 2
            prev_core_coefs = core_coefficients
            do i = 1, ncores
@@ -896,7 +820,6 @@ contains
            if (print_output) write (*, *) ""
        end do
 
-       ! Refinement iterations
        do step = 3, maxstep
            do i = 1, ncores
                relerrs(i) = abs((epsbs(i, 1) - epsbs(i, 2)) / epsbs(i, 2))
@@ -927,6 +850,8 @@ contains
        core_energies = epsbs(:, 2)
    end subroutine refining_solutions_scf
 
+   !> Compute the total SCF core energy including the Hartree-Fock
+   !> double-counting correction.
    double precision function total_core_energy_scf(knots, order, core_kappas, core_energies, core_coefficients, &
                                                    nodes, weights)
        double precision, dimension(:), intent(in) :: knots
@@ -964,6 +889,7 @@ contains
        total_core_energy_scf = etot
    end function total_core_energy_scf
 
+   !> Solve the valence orbitals in the frozen-core Hartree-Fock field.
    subroutine valence_solutions_scf(knots, order, potential_scf, core_kappas, core_coefficients, valence_kappas, &
                                     valence_nmains, nodes, weights, valence_energies, valence_coefficients)
        double precision, dimension(:), intent(in) :: knots
@@ -981,7 +907,6 @@ contains
        double precision, dimension(2*(size(knots)-order-2)) :: spectrum
        integer :: nvalences, nspectrum, i, kapa, nmna, la, na
 
-       ! Check if valence arrays have any elements
        if (size(valence_kappas) == 0) then
            return
        endif
@@ -1001,6 +926,8 @@ contains
        end do
    end subroutine valence_solutions_scf
 
+   !> Assemble the Hartree-Fock matrix for one target `kappa` channel from
+   !> the current set of occupied core orbitals.
    subroutine hartree_fock_matrix_scf(kappa, core_kappas, core_coefficients, knots, order, nodes, weights, hfmat)
        integer, intent(in) :: kappa
        integer, dimension(:), intent(in) :: core_kappas

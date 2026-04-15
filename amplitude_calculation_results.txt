@@ -1,0 +1,58 @@
+===============================================================================
+# NEW ENTRY - Z=6, N=6.0, R=2.4702 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                   6.0
+#   Number of Neutrons (N):              6.0
+#   Nuclear Radius (R):               2.4702 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  2s
+#   Final State:                    3s
+#   Initial State Energy:           -1.04543000E-05 (relativistic units)
+#   Final State Energy:             -3.92996800E-06 (relativistic units)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 2p, Energy: -6.85016800E-06
+#   State 2: 2p3, Energy: -6.85003200E-06
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):           1.24470063E-05
+#   Weak Amplitude (A_W):            8.97857316E-14
+#   Asymmetry Factor (η):            1.44268797E-08
+
+# SUMMARY:
+DATA: Z=6.0 N=6.0 R=2.4702 2s->3s Inter:2p,2p3 A_S= 1.24470063E-05 A_W= 8.97857316E-14 eta= 1.44268797E-08
+
+
+===============================================================================
+# NEW ENTRY - Z=55, N=146.0, R=4.8041 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                  55.0
+#   Number of Neutrons (N):            146.0
+#   Nuclear Radius (R):               4.8041 fm
+#   Wavefunction Type:              _scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  6s
+#   Final State:                    1s
+#   Initial State Energy:            9.50000000E-01 (relativistic units)
+#   Final State Energy:              7.00000000E-01 (relativistic units)
+#   Electric Field Strength (E0):    1.00000000E+00 (relativistic units)
+
+# INTERMEDIATE STATES:
+#   State 1: 6p, Energy:  9.00000000E-01
+#   State 2: 6p3, Energy:  9.10000000E-01
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):          -5.33552133E-05
+#   Weak Amplitude (A_W):            9.70305564E-19
+#   Asymmetry Factor (η):           -3.63715373E-14
+
+# SUMMARY:
+DATA: Z=55.0 N=146.0 R=4.8041 6s->1s Inter:6p,6p3 A_S=-5.33552133E-05 A_W= 9.70305564E-19 eta=-3.63715373E-14
+
+

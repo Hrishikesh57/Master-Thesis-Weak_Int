@@ -7,6 +7,11 @@ Calculates ∫₀^∞ (G² + F²) dr for Dirac spinors.
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import simpson
+from pathlib import Path
+
+RAD_ROOT = Path(__file__).resolve().parent
+DEFAULT_INPUT = RAD_ROOT / "data" / "grasp" / "rel" / "6_2s_rel.txt"
+PLOT_OUTPUT_DIR = RAD_ROOT / "outputs" / "plots"
 
 def check_normalization(filename):
     """
@@ -94,7 +99,8 @@ def check_normalization(filename):
         plt.tight_layout()
         
         # Save plot
-        plot_name = filename.replace('.txt', '_normalization_check.png')
+        PLOT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        plot_name = PLOT_OUTPUT_DIR / (Path(filename).stem + "_normalization_check.png")
         plt.savefig(plot_name, dpi=150, bbox_inches='tight')
         print(f"\nPlot saved: {plot_name}")
         
@@ -108,5 +114,4 @@ def check_normalization(filename):
 
 if __name__ == "__main__":
     # Check the 2s wavefunction
-    filename = "GRASP_rel/6_2s_rel.txt"
-    check_normalization(filename)
+    check_normalization(str(DEFAULT_INPUT))

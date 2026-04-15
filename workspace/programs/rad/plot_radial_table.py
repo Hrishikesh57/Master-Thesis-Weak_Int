@@ -1,7 +1,61 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import sys
+from pathlib import Path
+
+NEAR_ORIGIN_RMAX = 2.0
+TAIL_RELATIVE_THRESHOLD = 1.0e-8
+TAIL_BUFFER_POINTS = 3
+RAD_ROOT = Path(__file__).resolve().parent
+PLOT_OUTPUT_DIR = RAD_ROOT / "outputs" / "plots"
+SEARCH_DIRS = [
+    RAD_ROOT / "outputs" / "wavefunctions" / "single_electron",
+    RAD_ROOT / "outputs" / "wavefunctions" / "scf",
+    RAD_ROOT / "data" / "reference" / "wavefunctions" / "single_electron",
+    RAD_ROOT / "data" / "reference" / "wavefunctions" / "single_electron_legacy",
+    RAD_ROOT / "data" / "reference" / "wavefunctions" / "scf",
+    RAD_ROOT / "data" / "reference" / "wavefunctions" / "scf_legacy",
+    RAD_ROOT / "data" / "grasp" / "rel",
+    RAD_ROOT / "data" / "reference" / "radial_functions",
+    RAD_ROOT,
+]
+
+def ensure_plot_output_dir():
+    PLOT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def resolve_input_path(filename):
+    candidate = Path(filename)
+    if candidate.exists():
+        return candidate.resolve()
+
+    if not candidate.is_absolute():
+        for directory in SEARCH_DIRS:
+            test_path = directory / candidate.name
+            if test_path.exists():
+                return test_path.resolve()
+
+    return candidate
+
+def compute_auto_plot_rmax(r, g, f):
+    """
+    Choose the linear-plot cutoff from the radial probability envelope.
+    Stop once the tail maximum of G^2+F^2 stays below a fixed fraction
+    of its peak, so nodes in G or F do not trigger premature cutoffs.
+    """
+    rho = g**2 + f**2
+    peak_rho = float(np.max(rho))
+    if peak_rho <= 0.0:
+        return float(np.max(r)), False, 0.0
+
+    threshold = TAIL_RELATIVE_THRESHOLD * peak_rho
+    tail_max = np.maximum.accumulate(rho[::-1])[::-1]
+    below_threshold = np.where(tail_max < threshold)[0]
+
+    if len(below_threshold) == 0:
+        return float(np.max(r)), False, threshold
+
+    cutoff_index = min(int(below_threshold[0]) + TAIL_BUFFER_POINTS, len(r) - 1)
+    return float(r[cutoff_index]), True, threshold
 
 def analyze_data(filename):
     """
@@ -47,15 +101,12 @@ def analyze_data(filename):
             print("WARNING: Extremely large wavefunction values detected!")
             print("This suggests the data may be incorrect.")
         
-        # Check normalization (approximate)
-        dr = np.diff(r)
-        if len(dr) > 0:
-            avg_dr = np.mean(dr)
-            prob_density = g**2 + f**2
-            rough_norm = np.sum(prob_density) * avg_dr
-            print(f"Rough normalization check: {rough_norm:.6e}")
-            if rough_norm > 100:
-                print("WARNING: Normalization seems too large!")
+        # Check normalization with the actual radial grid
+        prob_density = g**2 + f**2
+        norm_estimate = np.trapezoid(prob_density, r)
+        print(f"Normalization check: {norm_estimate:.6e}")
+        if norm_estimate > 100:
+            print("WARNING: Normalization seems too large!")
         
         # Check for NaN or infinite values
         if np.any(np.isnan(g)) or np.any(np.isnan(f)):
@@ -75,7 +126,8 @@ def plot_wavefunction_with_diagnostics(filename):
     """
     
     # First analyze the data
-    data = analyze_data(filename)
+    resolved_path = resolve_input_path(filename)
+    data = analyze_data(str(resolved_path))
     if data is None:
         return
     
@@ -84,7 +136,7 @@ def plot_wavefunction_with_diagnostics(filename):
     f = data[:, 2]
     
     # Extract state info from filename
-    base_name = os.path.basename(filename)
+    base_name = resolved_path.name
     parts = base_name.split('_')
     if len(parts) >= 4:
         z_str = parts[0]
@@ -95,26 +147,33 @@ def plot_wavefunction_with_diagnostics(filename):
     
     # Create plot with 2 subplots: linear scale and near origin
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    plot_r_max, tail_reached, threshold = compute_auto_plot_rmax(r, g, f)
+    if tail_reached:
+        print(f"Auto tail cutoff: rho(r) stays below {TAIL_RELATIVE_THRESHOLD:.0e} of peak after r = {plot_r_max:.6e}")
+    else:
+        print(f"Tail threshold {TAIL_RELATIVE_THRESHOLD:.0e} not reached inside tabulated range; plotting to r = {plot_r_max:.6e}")
     
-    # Plot 1: Linear scale (full range)
+    # Plot 1: Linear scale over the default physically relevant range
     ax1.plot(r, g, 'b-', linewidth=2, label='g(r) - Large component')
     ax1.plot(r, f, 'r-', linewidth=2, label='f(r) - Small component')
-    ax1.set_xlabel('r (natural units, 1/MeV)')
+    ax1.set_xlabel('r (relativistic units, m_e = 1)')
     ax1.set_ylabel('Wavefunction amplitude')
-    ax1.set_title(f'Linear Scale - {title_info}')
+    ax1.set_title(f'Linear Scale (auto r ≤ {plot_r_max:.1f}) - {title_info}')
+    ax1.set_xlim(0.0, plot_r_max)
     ax1.grid(True, alpha=0.3)
     ax1.legend()
     ax1.axhline(y=0, color='k', linestyle='--', alpha=0.5)
     
     # Plot 2: Close-up near origin
-    r_max_closeup = 2.0  # Show first 2 units
+    r_max_closeup = min(NEAR_ORIGIN_RMAX, plot_r_max)
     mask_closeup = r <= r_max_closeup
     if np.any(mask_closeup):
         ax2.plot(r[mask_closeup], g[mask_closeup], 'b-', linewidth=2, label='g(r)')
         ax2.plot(r[mask_closeup], f[mask_closeup], 'r-', linewidth=2, label='f(r)')
-    ax2.set_xlabel('r (natural units, 1/MeV)')
+    ax2.set_xlabel('r (relativistic units, m_e = 1)')
     ax2.set_ylabel('Wavefunction amplitude')
     ax2.set_title(f'Near Origin (r ≤ {r_max_closeup}) - {title_info}')
+    ax2.set_xlim(0.0, r_max_closeup)
     ax2.grid(True, alpha=0.3)
     ax2.legend()
     ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5)
@@ -122,7 +181,8 @@ def plot_wavefunction_with_diagnostics(filename):
     plt.tight_layout()
     
     # Save plot
-    output_name = filename.replace('.dat', '_diagnostic_plot.png').replace('.txt', '_diagnostic_plot.png')
+    ensure_plot_output_dir()
+    output_name = PLOT_OUTPUT_DIR / f"{resolved_path.stem}_diagnostic_plot.png"
     plt.savefig(output_name, dpi=300, bbox_inches='tight')
     print(f"\nDiagnostic plot saved as: {output_name}")
     
@@ -137,8 +197,10 @@ def compare_single_vs_multi_electron(single_file, multi_file):
     print("=" * 60)
     
     # Load both datasets
-    single_data = analyze_data(single_file)
-    multi_data = analyze_data(multi_file)
+    single_path = resolve_input_path(single_file)
+    multi_path = resolve_input_path(multi_file)
+    single_data = analyze_data(str(single_path))
+    multi_data = analyze_data(str(multi_path))
     
     if single_data is None or multi_data is None:
         return
@@ -150,6 +212,9 @@ def compare_single_vs_multi_electron(single_file, multi_file):
     r_multi = multi_data[:, 0]
     g_multi = multi_data[:, 1]
     f_multi = multi_data[:, 2]
+    plot_r_single, _, _ = compute_auto_plot_rmax(r_single, g_single, f_single)
+    plot_r_multi, _, _ = compute_auto_plot_rmax(r_multi, g_multi, f_multi)
+    plot_r_max = max(plot_r_single, plot_r_multi)
     
     # Create comparison plot
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
@@ -157,9 +222,10 @@ def compare_single_vs_multi_electron(single_file, multi_file):
     # Compare g(r) components
     ax1.plot(r_single, g_single, 'b-', linewidth=2, label='Single electron g(r)')
     ax1.plot(r_multi, g_multi, 'r--', linewidth=2, label='Multi-electron g(r)')
-    ax1.set_xlabel('r (natural units, 1/MeV)')
+    ax1.set_xlabel('r (relativistic units, m_e = 1)')
     ax1.set_ylabel('g(r)')
-    ax1.set_title('Large Component Comparison')
+    ax1.set_title(f'Large Component Comparison (auto r ≤ {plot_r_max:.1f})')
+    ax1.set_xlim(0.0, plot_r_max)
     ax1.grid(True, alpha=0.3)
     ax1.legend()
     ax1.axhline(y=0, color='k', linestyle='--', alpha=0.5)
@@ -167,15 +233,16 @@ def compare_single_vs_multi_electron(single_file, multi_file):
     # Compare f(r) components
     ax2.plot(r_single, f_single, 'b-', linewidth=2, label='Single electron f(r)')
     ax2.plot(r_multi, f_multi, 'r--', linewidth=2, label='Multi-electron f(r)')
-    ax2.set_xlabel('r (natural units, 1/MeV)')
+    ax2.set_xlabel('r (relativistic units, m_e = 1)')
     ax2.set_ylabel('f(r)')
-    ax2.set_title('Small Component Comparison')
+    ax2.set_title(f'Small Component Comparison (auto r ≤ {plot_r_max:.1f})')
+    ax2.set_xlim(0.0, plot_r_max)
     ax2.grid(True, alpha=0.3)
     ax2.legend()
     ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5)
     
     # Close-up near origin for g(r)
-    r_max_closeup = 2.0
+    r_max_closeup = min(NEAR_ORIGIN_RMAX, plot_r_max)
     mask_single_closeup = r_single <= r_max_closeup
     mask_multi_closeup = r_multi <= r_max_closeup
     
@@ -185,9 +252,10 @@ def compare_single_vs_multi_electron(single_file, multi_file):
     if np.any(mask_multi_closeup):
         ax3.plot(r_multi[mask_multi_closeup], g_multi[mask_multi_closeup], 'r--', 
                 linewidth=2, label='Multi-electron g(r)')
-    ax3.set_xlabel('r (natural units, 1/MeV)')
+    ax3.set_xlabel('r (relativistic units, m_e = 1)')
     ax3.set_ylabel('g(r)')
     ax3.set_title(f'Large Component Near Origin (r ≤ {r_max_closeup})')
+    ax3.set_xlim(0.0, r_max_closeup)
     ax3.grid(True, alpha=0.3)
     ax3.legend()
     ax3.axhline(y=0, color='k', linestyle='--', alpha=0.5)
@@ -199,16 +267,19 @@ def compare_single_vs_multi_electron(single_file, multi_file):
     if np.any(mask_multi_closeup):
         ax4.plot(r_multi[mask_multi_closeup], f_multi[mask_multi_closeup], 'r--', 
                 linewidth=2, label='Multi-electron f(r)')
-    ax4.set_xlabel('r (natural units, 1/MeV)')
+    ax4.set_xlabel('r (relativistic units, m_e = 1)')
     ax4.set_ylabel('f(r)')
     ax4.set_title(f'Small Component Near Origin (r ≤ {r_max_closeup})')
+    ax4.set_xlim(0.0, r_max_closeup)
     ax4.grid(True, alpha=0.3)
     ax4.legend()
     ax4.axhline(y=0, color='k', linestyle='--', alpha=0.5)
     
     plt.tight_layout()
-    plt.savefig('comparison_plot.png', dpi=300, bbox_inches='tight')
-    print("Comparison plot saved as: comparison_plot.png")
+    ensure_plot_output_dir()
+    output_name = PLOT_OUTPUT_DIR / f"comparison_{single_path.stem}_vs_{multi_path.stem}.png"
+    plt.savefig(output_name, dpi=300, bbox_inches='tight')
+    print(f"Comparison plot saved as: {output_name}")
     plt.show()
 
 def plot_wavefunction(filename):
@@ -218,7 +289,8 @@ def plot_wavefunction(filename):
     """
     
     # Check if file exists
-    if not os.path.exists(filename):
+    resolved_path = resolve_input_path(filename)
+    if not resolved_path.exists():
         print(f"Error: File '{filename}' not found!")
         return
     
@@ -226,7 +298,7 @@ def plot_wavefunction(filename):
     try:
         # Read data while skipping lines that start with '#'
         data = []
-        with open(filename, 'r') as file:
+        with open(resolved_path, 'r') as file:
             for line in file:
                 line = line.strip()
                 if not line.startswith('#') and line:  # Skip comments and empty lines
@@ -253,7 +325,7 @@ def plot_wavefunction(filename):
         return
     
     # Extract state info from filename
-    base_name = os.path.basename(filename)
+    base_name = resolved_path.name
     parts = base_name.split('_')
     if len(parts) >= 4:
         z_str = parts[0]
@@ -264,14 +336,20 @@ def plot_wavefunction(filename):
     
     # Create the plot with linear scale
     plt.figure(figsize=(12, 8))
+    plot_r_max, tail_reached, threshold = compute_auto_plot_rmax(r, g, f)
+    if tail_reached:
+        print(f"Auto tail cutoff: rho(r) stays below {TAIL_RELATIVE_THRESHOLD:.0e} of peak after r = {plot_r_max:.6e}")
+    else:
+        print(f"Tail threshold {TAIL_RELATIVE_THRESHOLD:.0e} not reached inside tabulated range; plotting to r = {plot_r_max:.6e}")
     
     # Plot both components on the same plot
     plt.plot(r, g, 'b-', linewidth=2, label='g(r) - Large component')
     plt.plot(r, f, 'r-', linewidth=2, label='f(r) - Small component')
     
-    plt.xlabel('r (natural units, 1/MeV)')
+    plt.xlabel('r (relativistic units, m_e = 1)')
     plt.ylabel('Wavefunction amplitude')
-    plt.title(f'Radial Wavefunction Components - {title_info}')
+    plt.title(f'Radial Wavefunction Components (auto r ≤ {plot_r_max:.1f}) - {title_info}')
+    plt.xlim(0.0, plot_r_max)
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.axhline(y=0, color='k', linestyle='--', alpha=0.5)
@@ -279,7 +357,8 @@ def plot_wavefunction(filename):
     plt.tight_layout()
     
     # Save plot
-    output_name = filename.replace('.dat', '_linear_plot.png').replace('.txt', '_linear_plot.png')
+    ensure_plot_output_dir()
+    output_name = PLOT_OUTPUT_DIR / f"{resolved_path.stem}_linear_plot.png"
     plt.savefig(output_name, dpi=300, bbox_inches='tight')
     print(f"Linear plot saved as: {output_name}")
     
@@ -299,10 +378,10 @@ def main():
     else:
         # Interactive usage
         print("Radial Wavefunction Plotter (Linear Scale)")
-        print("Data format: .dat files with columns r, g(r), f(r)")
+        print("Data format: .txt/.dat files with columns r, g(r), f(r)")
         print("=" * 50)
         
-        filename = input("Enter wavefunction filename (.dat): ")
+        filename = input("Enter wavefunction filename (.txt or .dat): ")
         
         print("\nPlot options:")
         print("1. Diagnostic analysis (linear + near origin)")

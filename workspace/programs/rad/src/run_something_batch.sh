@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # Define paths
-WORKSPACE_DIR="/home/sriman/Documents/Thesis/workspace"
-RAD_DIR="${WORKSPACE_DIR}/programs/rad"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RAD_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+WORKSPACE_DIR="$(cd "${RAD_DIR}/../.." && pwd)"
 SRC_FILE="${RAD_DIR}/src/something.f90"
-INPUT_FILE="${RAD_DIR}/Energy_states_2s_2p.txt"
+INPUT_FILE="${RAD_DIR}/data/reference/energy_states/hydrogen_like/Energy_states_2s_2p.txt"
 EXEC_NAME="${RAD_DIR}/bin/something_exec"
 INCLUDE_DIR="${WORKSPACE_DIR}/include"
 MOD_DIR="${INCLUDE_DIR}/mod"
@@ -43,8 +44,8 @@ tail -n +2 "${INPUT_FILE}" | while IFS= read -r line || [[ -n "$line" ]]; do
   echo "Processing Z=${Z}, N=${N}, R_fm=${R_fm}..."
 
   # Prepare the input string for the Fortran program
-  # Order=2, Z, N, R_fm, InitialState='2s', IntermediateState='2p', E_initial, E_intermediate
-  input_string=$(printf "2\n%s\n%s\n%s\n2s\n2p\n%s\n%s\n" \
+  # main=energy, order=2, Z, N, R_fm, InitialState='2s', IntermediateState='2p', E_initial, E_intermediate
+  input_string=$(printf "energy\n2\n%s\n%s\n%s\n2s\n2p\n%s\n%s\n" \
                  "${Z}" "${N}" "${R_fm}" "${E_initial}" "${E_intermediate}")
 
   # Run the executable, piping the input string
@@ -54,6 +55,6 @@ tail -n +2 "${INPUT_FILE}" | while IFS= read -r line || [[ -n "$line" ]]; do
 done
 
 echo "Batch processing finished."
-echo "Results should be appended to /home/sriman/Documents/Thesis/Z_Matrix_elements.txt"
+echo "Results are appended to ${RAD_DIR}/outputs/results/energy/hydrogen_like/second_order_energy_corrections.txt"
 
 exit 0

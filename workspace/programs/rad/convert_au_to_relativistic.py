@@ -10,6 +10,10 @@ where alpha is the fine structure constant ≈ 7.297353e-3
 import sys
 import os
 import argparse
+from pathlib import Path
+
+RAD_ROOT = Path(__file__).resolve().parent
+DEFAULT_ANALYSIS_DIR = RAD_ROOT / "outputs" / "analysis"
 
 
 def convert_au_to_relativistic(input_file, alpha=7.297353e-3):
@@ -19,19 +23,17 @@ def convert_au_to_relativistic(input_file, alpha=7.297353e-3):
     print(f"Fine structure constant α = {alpha}")
     print(f"Conversion factor α² = {conversion_factor:.6e}")
     print("=" * 50)
-
-    # Derive output filenames from input filename
-    base, ext = os.path.splitext(os.path.basename(input_file))
-    output_file = f"{base}_rel.txt"
-    summary_file = f"{base}_conversion_summary.txt"
+    input_path = Path(input_file)
+    output_file = input_path.with_name(f"{input_path.stem}_rel.txt")
+    summary_file = input_path.with_name(f"{input_path.stem}_conversion_summary.txt")
 
     # Check if file exists
-    if not os.path.exists(input_file):
-        print(f"Error: File '{input_file}' not found!")
+    if not input_path.exists():
+        print(f"Error: File '{input_path}' not found!")
         return
 
     try:
-        with open(input_file, 'r') as infile:
+        with open(input_path, 'r') as infile:
             with open(output_file, 'w') as outfile:
                 # Write header to output file - Si³⁺ format
                 outfile.write("# =================================================================\n")
@@ -134,7 +136,7 @@ def convert_au_to_relativistic(input_file, alpha=7.297353e-3):
     with open(summary_file, 'w') as summary:
         summary.write("Energy Conversion Summary\n")
         summary.write("========================\n")
-        summary.write(f"Input file: {input_file}\n")
+        summary.write(f"Input file: {input_path}\n")
         summary.write(f"Output file: {output_file}\n")
         summary.write(f"Conversion factor (α²): {conversion_factor:.12e}\n")
         summary.write(f"Fine structure constant (α): {alpha:.12e}\n")
@@ -149,7 +151,9 @@ def convert_au_to_relativistic(input_file, alpha=7.297353e-3):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Convert energies from atomic units to relativistic units')
-    parser.add_argument('input_file', help='Input file containing energies in atomic units')
+    parser.add_argument('input_file', nargs='?',
+                        default=str(DEFAULT_ANALYSIS_DIR / "Si_Na_energies.txt"),
+                        help='Input file containing energies in atomic units')
     parser.add_argument('--alpha', type=float, default=7.297353e-3,
                         help='Fine structure constant (default: 7.297353e-3)')
     args = parser.parse_args()

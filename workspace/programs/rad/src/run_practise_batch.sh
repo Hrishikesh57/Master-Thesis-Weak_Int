@@ -1,13 +1,16 @@
 #!/bin/bash
 
-# Path to the executable (!! CORRECTED based on Makefile !!)
-EXECUTABLE="/home/sriman/Documents/Thesis/workspace/programs/rad/bin/practise"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RAD_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Path to the executable
+EXECUTABLE="${RAD_DIR}/bin/practise"
 
 # Path to the input file with radii
-RADII_FILE="/home/sriman/Documents/Thesis/workspace/programs/rad/radii_ref.txt"
+RADII_FILE="${RAD_DIR}/data/nuclear/radii_ref.txt"
 
-# Directory where the Fortran program is run (and where output files will be created)
-RUN_DIR="/home/sriman/Documents/Thesis/workspace/programs/rad"
+# Directory where the Fortran program is run
+RUN_DIR="${RAD_DIR}"
 
 # Check if the executable exists
 if [ ! -f "$EXECUTABLE" ]; then
@@ -42,7 +45,7 @@ tail -n +2 "$RADII_FILE" | while read -r znucl n rms_fm; do
 
     # Run for 2s state
     echo "  Running for state 2s..."
-    printf "%s\n%s\n%s\n" "$znucl" "2s" "$rms_fm_clean" | "$EXECUTABLE"
+    printf "1\n%s\n2s\n%s\n" "$znucl" "$rms_fm_clean" | "$EXECUTABLE"
 
     # Check exit status (optional, but good practice)
     if [ $? -ne 0 ]; then
@@ -53,7 +56,7 @@ tail -n +2 "$RADII_FILE" | while read -r znucl n rms_fm; do
 
     # Run for 2p state
     echo "  Running for state 2p..."
-    printf "%s\n%s\n%s\n" "$znucl" "2p" "$rms_fm_clean" | "$EXECUTABLE"
+    printf "1\n%s\n2p\n%s\n" "$znucl" "$rms_fm_clean" | "$EXECUTABLE"
 
     # Check exit status
     if [ $? -ne 0 ]; then
@@ -65,6 +68,6 @@ tail -n +2 "$RADII_FILE" | while read -r znucl n rms_fm; do
 done
 
 echo "All runs finished."
-echo "Output files (e.g., ${znucl}_polynomial_table_2s.txt) should be located in $RUN_DIR"
+echo "Output files are written under ${RUN_DIR}/outputs/wavefunctions/single_electron"
 
 exit 0
