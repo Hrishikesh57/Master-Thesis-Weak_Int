@@ -56,10 +56,12 @@ module bspqed_physconsts
     !> sin^2(theta_W) (Weinberg angle squared)
     double precision, parameter :: sin2thetaW = 0.2312d0
 
-    !> Electron vector coupling constant C_V^e = -0.5 + 2 sin^2(theta_W)
+    !> Internal common-radius weak-source convention:
+    !> C_V^e = 1 - 4 sin^2(theta_W).
     double precision, parameter :: Cv_e = 1.0d0 - 4.0d0 * sin2thetaW  ! Approximately 
 
-    !> Proton vector coupling constant C_V^p = 0.5 - 2 sin^2(theta_W)
+    !> Internal common-radius weak-source convention:
+    !> C_V^p = 1 - 4 sin^2(theta_W).
     double precision, parameter :: Cv_p = 1.0d0 - 4.0d0 * sin2thetaW   ! Approximately 
 
 end module bspqed_physconsts

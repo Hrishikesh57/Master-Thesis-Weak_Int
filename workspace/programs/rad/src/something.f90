@@ -32,8 +32,9 @@ contains
     subroutine run_energy_mode()
         implicit none
         character(len=20) :: order_choice
-        character(len=20) :: state_initial, state_intermediate
-        character(len=256) :: filename_n, filename_s, reference_filename
+        logical :: use_scf
+        character(len=20) :: state_initial, state_intermediate, system_label
+        character(len=256) :: filename_n, filename_s
         integer :: npoints, npoints_n, npoints_s
         double precision :: z, n, r_fm, r_rel
         double precision :: e_pot, m_n_s, delta_e
@@ -50,10 +51,15 @@ contains
         call initialize_weak_potential(z, n, r_fm, potential, r_rel)
         call print_potential_summary(potential, r_rel)
 
-        reference_filename = resolve_reference_radial_filename()
-
         if (trim(order_choice) == '1') then
-            call read_radial_functions(reference_filename, npoints, r, g, f)
+            call prompt_system_type(use_scf, system_label)
+            print *, 'Enter the state for the first-order energy correction (e.g., 1s, 2s, 6s):'
+            read *, state_initial
+
+            call load_state_wavefunction(nint(z), trim(state_initial), use_scf, filename_s, npoints, r, g, f)
+            print *, 'Reading wave function from:'
+            print *, 'State (', trim(state_initial), ', ', trim(system_label), '): ', trim(filename_s)
+
             e_pot = integrate_single_channel(0d0, r_rel, npoints, r, g, f, potential, .true.)
             print *, 'E_pot (0 to R) using Gauss–Legendre = ', e_pot, ' in relativistic units (m_e = 1)'
             deallocate(r, g, f)

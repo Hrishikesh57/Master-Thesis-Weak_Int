@@ -68,8 +68,8 @@ module bspqed_potentials
     type, extends(function_type) :: weak_potential
     double precision :: Z            ! Atomic number
     double precision :: N            ! Number of neutrons
-    double precision :: R_au         ! Nuclear radius R in atomic units
-    double precision :: rho0         ! Computed constant rho0 in atomic units
+    double precision :: R_au         ! Legacy name; active callers pass R in relativistic units.
+    double precision :: rho0         ! Hard-sphere weak source in the active relativistic convention.
     double precision :: Cv_pZ_minus_N
     double precision :: c  ! New parameter
 contains
@@ -92,11 +92,11 @@ subroutine weak_potential_init(self, Z_in, N_in, R_au_in, c_in)
     self%R_au = R_au_in
     self%c = c_in
 
-    ! Compute (Cv_p * Z - N)
+    ! Compute Q_impl = Cv_p * Z - N for the internal common-radius convention.
     Cv_pZ_minus_N = (Cv_p * self%Z) - self%N
     self%Cv_pZ_minus_N = Cv_pZ_minus_N
 
-    ! Compute rho0 in atomic units
+    ! Compute rho0 in the active relativistic-unit convention.
     rho0_au = (3.0d0 / (4.0d0 * pi)) * ((self%c / self%R_au)**3) * Cv_pZ_minus_N * (Gfermi_relativistic / (2.0d0 * sqrt(2.0d0)))
 
     ! Assign rho0
