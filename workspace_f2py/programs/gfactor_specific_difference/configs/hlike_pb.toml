@@ -1,0 +1,29 @@
+[ion]
+label = "Pb_H_like_1s"
+charge_state = "H-like"
+isotope = "Pb-208"
+znucl = 82
+nneutrons = 126
+rms_fm = 5.5012
+kappa = -1
+nmain = 1
+state_label = "1s"
+
+[nuclear_model]
+charge_model = "sphere"
+weak_model = "uniform_sphere"
+charge_radius_convention = "rms_fm"
+notes = [
+  "Default spherical finite-size convention chosen to match the copied gfactor driver setup.",
+  "The Pb-208 RMS radius here is a project default and must be checked against the final paper reference before publication use.",
+]
+
+[backend]
+hlike_mode = "executable_bridge"
+lilike_mode = "direct_f2py"
+lithium_selected_gauge = "feynman"
+order = 9
+notes = [
+  "H-like reuse currently goes through workspace_f2py_api executable bridges.",
+  "This config is intended for specific-difference development, not as a final published data source.",
+]

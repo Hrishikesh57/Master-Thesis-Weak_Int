@@ -1,0 +1,29 @@
+[ion]
+label = "U_H_like_1s"
+charge_state = "H-like"
+isotope = "U-238"
+znucl = 92
+nneutrons = 146
+rms_fm = 5.8571
+kappa = -1
+nmain = 1
+state_label = "1s"
+
+[nuclear_model]
+charge_model = "sphere"
+weak_model = "uniform_sphere"
+charge_radius_convention = "rms_fm"
+notes = [
+  "Uses the same spherical finite-size convention as the copied H-like and Li-like gfactor drivers.",
+  "The U-238 RMS radius matches the copied workspace examples already used in gfactor and weak-kernel validation.",
+]
+
+[backend]
+hlike_mode = "executable_bridge"
+lilike_mode = "direct_f2py"
+lithium_selected_gauge = "feynman"
+order = 9
+notes = [
+  "H-like reuse currently goes through workspace_f2py_api executable bridges.",
+  "This config is the default uranium development case for the first pass.",
+]

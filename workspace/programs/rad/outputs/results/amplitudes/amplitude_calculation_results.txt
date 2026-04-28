@@ -55,3 +55,32 @@
 
 
 
+===============================================================================
+# NEW ENTRY - Z=6, N=6.0, R=2.4702 fm
+===============================================================================
+# SYSTEM PARAMETERS:
+#   Atomic Number (Z):                   6.0
+#   Number of Neutrons (N):              6.0
+#   Nuclear Radius (R):               2.4702 fm
+#   Wavefunction Type:              scf
+
+# TRANSITION INFORMATION:
+#   Initial State:                  2s
+#   Final State:                    3s
+#   Initial State Energy:           -1.25986700E-04 (relativistic units, m_e = 1)
+#   Final State Energy:             -5.26721600E-05 (relativistic units, m_e = 1)
+#   Electric Field Strength (E0):    1.50000000E-13 (relativistic units, m_e = 1)
+
+# INTERMEDIATE STATES:
+#   State 1: 2p, Energy: -1.10167500E-04
+#   State 2: 2p3, Energy: -1.10136500E-04
+
+# CALCULATION RESULTS:
+#   Stark Amplitude (A_S):          -1.78744549E-05
+#   Weak Amplitude (A_W):            1.39380168E-14
+#   Asymmetry Factor (η):           -1.55954594E-09
+
+# SUMMARY:
+DATA: Z=6.0 N=6.0 R=2.4702 2s->3s Inter:2p,2p3 A_S=-1.78744549E-05 A_W= 1.39380168E-14 eta=-1.55954594E-09
+
+

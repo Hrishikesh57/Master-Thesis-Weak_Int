@@ -1,0 +1,9 @@
+[run]
+label = "U_specific_difference_dirac_fns"
+hydrogen_case = "hlike_u.toml"
+lithium_case = "lilike_u.toml"
+fns_rms_scan_fm = [5.8471, 5.8571, 5.8671]
+notes = [
+  "Initial specific-difference run config for U using Dirac+FNS only.",
+  "The FNS scan points are project defaults for numerical differentiation and should be revisited during convergence studies.",
+]

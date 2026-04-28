@@ -1,0 +1,9 @@
+[run]
+label = "Pb_specific_difference_dirac_fns"
+hydrogen_case = "hlike_pb.toml"
+lithium_case = "lilike_pb.toml"
+fns_rms_scan_fm = [5.4912, 5.5012, 5.5112]
+notes = [
+  "Initial specific-difference run config for Pb using Dirac+FNS only.",
+  "The FNS scan points are project defaults for numerical differentiation and should be revisited during convergence studies.",
+]

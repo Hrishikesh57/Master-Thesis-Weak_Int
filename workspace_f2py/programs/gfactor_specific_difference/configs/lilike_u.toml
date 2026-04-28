@@ -1,0 +1,29 @@
+[ion]
+label = "U_Li_like_2s"
+charge_state = "Li-like"
+isotope = "U-238"
+znucl = 92
+nneutrons = 146
+rms_fm = 5.8571
+kappa = -1
+nmain = 2
+state_label = "2s"
+
+[nuclear_model]
+charge_model = "sphere"
+weak_model = "uniform_sphere"
+charge_radius_convention = "rms_fm"
+notes = [
+  "Default spherical finite-size convention chosen to match the copied Li-like gfactor workflow.",
+  "The final interpretation of the copied lithium g_dirac workflow inside the specific-difference observable remains to be validated against paper context.",
+]
+
+[backend]
+hlike_mode = "executable_bridge"
+lilike_mode = "direct_f2py"
+lithium_selected_gauge = "feynman"
+order = 9
+notes = [
+  "Li-like reuse currently goes through the copied gfactor_lithium f2py suite.",
+  "Gauge selection is explicit and provisional in this first pass.",
+]
