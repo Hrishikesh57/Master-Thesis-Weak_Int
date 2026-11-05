@@ -14,8 +14,12 @@ The local verification image identifier is `98781ca02c4fbacda42920cfcd21626ce492
 
 ## Reproducibility limits
 
-Native Docker Engine was unavailable, so the tested container engine was Podman with Dockerfile-compatible builds. Native Windows/macOS execution was not tested. The active GitHub Actions definition is at the repository root. The recorded native/container checks preceded the public commit; the live Actions result is recorded on GitHub. The pure-Python workflow's additional Python 3.12 job is a future check, not a claimed result.
+Native Docker Engine was unavailable, so the tested container engine was Podman with Dockerfile-compatible builds. Native Windows/macOS execution was not tested. The active GitHub Actions definition is at the repository root. The recorded native/container checks preceded the public commit; the live Actions result is recorded on GitHub.
 
 The base image tag and native BLAS/compiler packages can change. The Python requirements are pinned, but bitwise-identical builds across platforms are not promised. The reference data are calculations of the stated model, not experimental observations. Scientific assumptions and remaining interpretation limits are described in the model report.
 
 Portable reference JSON retains source hashes and scientific results but omits the original machine-specific compiler command paths. Rebuilding writes the full new command list to `workspace/programs/weak_spherical/build_manifest.json`.
+
+## GitHub Actions
+
+On 5 November 2026, the [source-build workflow](https://github.com/Hrishikesh57/Master-Thesis-Weak_Int/actions/runs/42069025970) for code commit `335cd74fefc707586dc34c164b245ecf0b6f4037` passed on Python 3.14. The job installed system/Python dependencies, rebuilt from source, passed ten physics tests, ran the complete example and 58 convergence comparisons, and uploaded the output artifact.
