@@ -1,0 +1,11 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+*.egg-info
+results
+*.so
+*.o
+*.mod
+**/build_manifest.json
+**/sampled_radial_diagnostic

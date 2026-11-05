@@ -1,0 +1,1278 @@
+{
+  "status": "passed",
+  "scope": "Internal numerical validation of explicitly approximate spherical tree-level models; no precision APV benchmark",
+  "build_manifest": {
+    "source_complete": true,
+    "python": "3.14.8 (main, Oct  1 2026, 00:00:00) [GCC 16.2.1 20260819 (Red Hat 16.2.1-2)]",
+    "numpy": "2.4.6",
+    "compiler": "GNU Fortran (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+    "flags": [
+      "-O2",
+      "-fPIC",
+      "-fcheck=bounds",
+      "-fbacktrace",
+      "-ffree-line-length-none"
+    ],
+    "sources_sha256": {
+      "workspace/codes/bspqed/src/bspqed_function.f90": "52c802059b719acf8e20af5ea90a9eb60896c99e2a82c87de0c1dc10dd2c2d60",
+      "workspace/codes/bspqed/src/bspqed_physconsts.f90": "4eaa0bc62acd357ff4a1e5ec3a2c960939a1717ca95161d7d3c5fcb4d579fe75",
+      "workspace/codes/bspqed/src/bspqed_quadrature.f90": "20bfdb0f8cd70fd0cfd39ee658649ccc66bf3da4394ad36e89b3537a1a3aead1",
+      "workspace/codes/bspqed/src/bspqed_uehling.f90": "0810ad028cf02716ff5f22fc23f8dddf8d760fc7c5d212acb1ba9d9f5130a9c5",
+      "workspace/codes/bspqed/src/bspqed_potentials.f90": "3794be91147f971464cc48a26ccd3a242841561b6831fe3e1beddcbd86bd95a2",
+      "workspace/codes/bspqed/src/bspqed_dkb.f90": "3327dfc4414f4b024e2213d0a2a62a4ab3deca1e37dbd4b91c901a6f5cf97b8c",
+      "workspace/build/slatec/src/dbvalu.f": "2e1b9bba1f395c30864c7d6c9b6a196cb9e4d6029fb499734ab849f6019ac1f9",
+      "workspace/build/slatec/src/dbspvd.f": "bd84bf2c7b0b8969898968667eba3525607f1031107437eddc82bd6f0d6a8817",
+      "workspace/build/slatec/src/dbspvn.f": "b8d2394623c739b9ae224c34b55d3ffe1064baa399e519ec91e3da7d6a0006db",
+      "workspace/build/slatec/src/dintrv.f": "9c942c7e7f379d98573c71e3b38a2c52f4e0ef56c4b20c90ea37639db6fc31a3",
+      "workspace/build/slatec/src/xermsg.f": "dd605784ff3ed3e491f2b4b2f2b8fd21c7f15b6831f8739bbf70c781925b705e",
+      "workspace/build/slatec/src/xerprn.f": "af09d2e9527ef24c8f6cfcf58a5210a8f244b6ec7d7948ab43391b1a9604194c",
+      "workspace/build/slatec/src/xersve.f": "2ecd7f1ca0dbef747a6a34e3aef1cd2637bad704ed48376a3a7544c38bf4fdf3",
+      "workspace/build/slatec/src/j4save.f": "1460f8cbf73dbe00d1ce6ba9aa9f3db86e813731d8a5809c9881691aae293015",
+      "workspace/build/slatec/src/xerhlt.f": "6891b7bf5c0c26fa7460e8a1364d1f88760ba1ea6cb501dd251df28f2dac6689",
+      "workspace/build/slatec/src/xgetua.f": "86b15012160e810b70621ba91acd6ec025c48bb932ee59e95e8f2645416210a2",
+      "workspace/build/slatec/src/i1mach.f": "7a9e027ddb98a3a484b980fb9e3f5878684bb36b7723b8475740e016ff4281f6",
+      "workspace/build/slatec/src/fdump.f": "7805a508652c9fb087916dceb9184bf5e56a98b1c99afa4cbab8f4c4bf9f0369",
+      "workspace/build/slatec/src/xercnt.f": "d0f587024a55d04c6e8536d244858a781fc2148dba587b727a8fb2c0d7433a7b",
+      "workspace/programs/weak_spherical/kernel.f90": "71df4a54580f3826d673614318a0f4cffd08dcda42927928d2e9376097a09bff",
+      "workspace/programs/rad/src/weak_angular_labels.f90": "63a9bc8ace1b130d81ebcb8ca17155103536ccba7a65f9c6855fc4e8000a281f",
+      "workspace/build/slatec/src/dbesk0.f": "1f8739474b1e92e1ae1c26d59a06d8dcdd2056db4cfa29a22d2008fe67fa7c5e",
+      "workspace/build/slatec/src/dbesk1.f": "b984d50e2c38b3269517f6d801a8a76ddc6b11b4416f0fd8d5f9f77d85b1ee42",
+      "workspace/build/slatec/src/dbskin.f": "0e52070b40cb0f3c5058cf01a1e38a8b9a2c8643ae389f33b7b14d0ddacfc996",
+      "workspace/build/slatec/src/erf.f": "c63f326756672d49a7a87ba7897ef83fd4e38a8b8c79351f5197008563d34e6f",
+      "workspace/build/slatec/src/csevl.f": "898d56d906caec38eb1c4e2813172eb59ded8fa895dda054bfc818e3a2f2711d",
+      "workspace/build/slatec/src/d1mach.f": "e630771443ec0116cdd8626c4f3ba48fa36ffd783507124449521f0efad174be",
+      "workspace/build/slatec/src/dbesi0.f": "b4a440b65f4f72ce0ea3d4140fc071e238d009fec10ae10add6b1bec0fede3c8",
+      "workspace/build/slatec/src/dbesi1.f": "1caeedb909be60a466497a4a8a7869e161bec253b984a4f3569decd1fe393a7f",
+      "workspace/build/slatec/src/dbkias.f": "668b1c5d139d40cd5b999875afa057fa393b2a520072fb477a0a836a3a75cc40",
+      "workspace/build/slatec/src/dbkisr.f": "09c12e0b4b3c0933c6a952638203b3fac49fb8ecc49c6a0ba5a338311aedaca9",
+      "workspace/build/slatec/src/dbsk0e.f": "6086ba86ac3d3c761269d9dbc75a6f424cbcbb98e29584a95c4f2233e96781bf",
+      "workspace/build/slatec/src/dbsk1e.f": "31d1a562e6b924b40fd5d89f3df5c16a45d2633901d0aeb65db9f6a89d30690d",
+      "workspace/build/slatec/src/dcsevl.f": "8f907d21bbad242cf415e7916a48f6db2d2793164ac6652ead83a6cbbbd3bd62",
+      "workspace/build/slatec/src/dexint.f": "bb08d955b86d627bf7cfc428b18ca2043de11736352e3a719e9c12b2e3885cfa",
+      "workspace/build/slatec/src/dgamrn.f": "8d6766615afff326a7af3ce29101ba257c33b0649578984e4ba17a51bd97b864",
+      "workspace/build/slatec/src/erfc.f": "8fc79bc57c551b3427bb0e3fdfa521f0d9e7dd8a31d89ad20e9addec92714496",
+      "workspace/build/slatec/src/initds.f": "27175c6f8b8d93c740b62d02667bf9576ce03c114db61abd53755504d0c9f8a6",
+      "workspace/build/slatec/src/inits.f": "aa713f62969180475f9dd1313f08ad75cfdc09d27c28df89ea5cc45ddff805e2",
+      "workspace/build/slatec/src/r1mach.f": "2dd15343acc448da490b173a09101c2ab5ad9b2cc591cbc3cd1228477136f251",
+      "workspace/build/slatec/src/dbdiff.f": "d9cdc6c13791e1ae61da5bc8a625828171c63b5e1bf0eeff811038f303c5eb40",
+      "workspace/build/slatec/src/dbsi0e.f": "1ba478c6c21bb6dbfb55fe5fa73be6cde82a4246db6c9afdc45b671b19d04f0d",
+      "workspace/build/slatec/src/dbsi1e.f": "c007158e783a494700e07a8451934f43ae86db3dd53fe98178cad5bf8a38b088",
+      "workspace/build/slatec/src/dhkseq.f": "df62a0316f5dec0f1c8c97db4af64fc0c7173df45e19993031073207efb561b9",
+      "workspace/build/slatec/src/dpsixn.f": "2f74b721010ba77d1e3bab324cc7495fe5241d6b98d5e1a0331890653343e96c",
+      "workspace/programs/rad/src/something.f90": "0d0bc9e76cb8e5049c752ca44655a401eecb9d96d659c80b4410354f703595b1"
+    },
+    "extension_sha256": "ff6fd0c07c4c6bb60e02899e289bda1f73089da4527fe61c9c607abb37c63a93",
+    "commands_note": "Full command list is generated in workspace/programs/weak_spherical/build_manifest.json when rebuilding; omitted from this portable reference record."
+  },
+  "python_source_sha256": {
+    "spherical.py": "61aa2620b01a2e3fdf982686bdfdb8abdbc961b00f4b34900ccf5ea2768029c4",
+    "validate.py": "da9c33bc43934ba4c2910ef7b0ea50775d55e8b9980585ed8a249727e2930515",
+    "test_spherical.py": "48553fb2fcfd9d93bdb858256730a02347687ee6e1bd4c231189cc966fd3d20e"
+  },
+  "records": [
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 100,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.8013417341254451,
+      "norm_1s": 1.0000000000000018,
+      "delta_energy_pc_mc2": -3.888488306176323e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032935419044e-12,
+      "magnetic": {
+        "delta_g": -1.3328869918442389e-11,
+        "negative_energy_part": 1.4649564082020614e-12,
+        "positive_energy_part": -1.479382632664445e-11,
+        "g_unperturbed": 1.7353999398648983
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119704227223e-10,
+        "abs_e_bohr": 5.682119704227223e-10,
+        "first_ordering_imag_e_bohr": 1.0517958410769736e-13,
+        "second_ordering_imag_e_bohr": -5.683171500068301e-10,
+        "smallest_denominator_mc2": 2.0872033754892882e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.24291916400034097
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.8013417341254234,
+      "norm_1s": 1.0000000000000009,
+      "delta_energy_pc_mc2": -3.8884883675401456e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032897370431e-12,
+      "magnetic": {
+        "delta_g": -1.3328870156998062e-11,
+        "negative_energy_part": 1.4649564095173988e-12,
+        "positive_energy_part": -1.479382656651546e-11,
+        "g_unperturbed": 1.735399939864837
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119669988369e-10,
+        "abs_e_bohr": 5.682119669988369e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418366265e-13,
+        "second_ordering_imag_e_bohr": -5.683171465830205e-10,
+        "smallest_denominator_mc2": 2.0872033749119723e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "mass_derivatives": {
+        "0.001": -1.3328871996111977e-11,
+        "0.0005": -1.3328870611907617e-11,
+        "0.00025": -1.3328870256606617e-11
+      },
+      "mass_vs_direct_relative_difference": 7.473143215364075e-09,
+      "seconds": 2.661931344999175
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.8013417341254461,
+      "norm_1s": 0.999999999999998,
+      "delta_energy_pc_mc2": -3.888488367535254e-12,
+      "pv_2p12_1s_imag_mc2": -6.33303289734673e-12,
+      "magnetic": {
+        "delta_g": -1.3328870156981507e-11,
+        "negative_energy_part": 1.4649564095151606e-12,
+        "positive_energy_part": -1.4793826566496668e-11,
+        "g_unperturbed": 1.7353999398648778
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119668394833e-10,
+        "abs_e_bohr": 5.682119668394833e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418345612e-13,
+        "second_ordering_imag_e_bohr": -5.683171464236667e-10,
+        "smallest_denominator_mc2": 2.0872033754892882e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 1.540106819000357
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.8013417341254573,
+      "norm_1s": 1.0000000000000098,
+      "delta_energy_pc_mc2": -3.888488367544704e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032897334887e-12,
+      "magnetic": {
+        "delta_g": -1.3328870157010955e-11,
+        "negative_energy_part": 1.4649564095204938e-12,
+        "positive_energy_part": -1.4793826566531445e-11,
+        "g_unperturbed": 1.7353999398649549
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119668717222e-10,
+        "abs_e_bohr": 5.682119668717222e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418330916e-13,
+        "second_ordering_imag_e_bohr": -5.683171464559057e-10,
+        "smallest_denominator_mc2": 2.0872033753671637e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 2.822369957000774
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.8013417341254245,
+      "norm_1s": 1.0000000000000036,
+      "delta_energy_pc_mc2": -3.888488367543036e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032897380577e-12,
+      "magnetic": {
+        "delta_g": -1.3328870157007696e-11,
+        "negative_energy_part": 1.4649564095198401e-12,
+        "positive_energy_part": -1.479382656652754e-11,
+        "g_unperturbed": 1.735399939864813
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119669392746e-10,
+        "abs_e_bohr": 5.682119669392746e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418394073e-13,
+        "second_ordering_imag_e_bohr": -5.683171465234586e-10,
+        "smallest_denominator_mc2": 2.087203375134017e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.4713350080019154
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.801341734125429,
+      "norm_1s": 1.0000000000000016,
+      "delta_energy_pc_mc2": -3.888488367536919e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032897368542e-12,
+      "magnetic": {
+        "delta_g": -1.3328870156982798e-11,
+        "negative_energy_part": 1.4649564095195697e-12,
+        "positive_energy_part": -1.4793826566502365e-11,
+        "g_unperturbed": 1.7353999398648408
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119669412352e-10,
+        "abs_e_bohr": 5.682119669412352e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418371846e-13,
+        "second_ordering_imag_e_bohr": -5.683171465254189e-10,
+        "smallest_denominator_mc2": 2.0872033751229147e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.827741403998516
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.8013417341254292,
+      "norm_1s": 0.9999999999999981,
+      "delta_energy_pc_mc2": -3.888488367538427e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032897365481e-12,
+      "magnetic": {
+        "delta_g": -1.3328870156989857e-11,
+        "negative_energy_part": 1.464956409519659e-12,
+        "positive_energy_part": -1.4793826566509512e-11,
+        "g_unperturbed": 1.73539993986482
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119670347119e-10,
+        "abs_e_bohr": 5.682119670347119e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418357773e-13,
+        "second_ordering_imag_e_bohr": -5.683171466188954e-10,
+        "smallest_denominator_mc2": 2.0872033747787455e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 1.1977410910003528
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "energy_1s_mc2": 0.8013417341254332,
+      "norm_1s": 1.0000000000000009,
+      "delta_energy_pc_mc2": -3.88848836753439e-12,
+      "pv_2p12_1s_imag_mc2": -6.333032897363941e-12,
+      "magnetic": {
+        "delta_g": -1.3328870156974588e-11,
+        "negative_energy_part": 1.4649564095180412e-12,
+        "positive_energy_part": -1.479382656649263e-11,
+        "g_unperturbed": 1.7353999398648474
+      },
+      "apv": {
+        "imag_e_bohr": -5.682119668168089e-10,
+        "abs_e_bohr": 5.682119668168089e-10,
+        "first_ordering_imag_e_bohr": 1.0517958418348425e-13,
+        "second_ordering_imag_e_bohr": -5.683171464009923e-10,
+        "smallest_denominator_mc2": 2.087203375578106e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.6370114130004367
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 100,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.7415233770186135,
+      "norm_1s": 0.9999999999999977,
+      "delta_energy_pc_mc2": -9.59983027955344e-12,
+      "pv_2p12_1s_imag_mc2": -1.913694937111915e-11,
+      "magnetic": {
+        "delta_g": -3.1233278183187674e-11,
+        "negative_energy_part": 2.8073021379663275e-12,
+        "positive_energy_part": -3.4040580321154e-11,
+        "g_unperturbed": 1.6561201812662434
+      },
+      "apv": {
+        "imag_e_bohr": -4.85520558954726e-10,
+        "abs_e_bohr": 4.85520558954726e-10,
+        "first_ordering_imag_e_bohr": 2.1918134684987353e-13,
+        "second_ordering_imag_e_bohr": -4.857397403015759e-10,
+        "smallest_denominator_mc2": 6.521190956543244e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.24144430899832514
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.7415233770185538,
+      "norm_1s": 1.0000000000000004,
+      "delta_energy_pc_mc2": -9.59983047810496e-12,
+      "pv_2p12_1s_imag_mc2": -1.913694919792314e-11,
+      "magnetic": {
+        "delta_g": -3.1233278924324455e-11,
+        "negative_energy_part": 2.8073021207653058e-12,
+        "positive_energy_part": -3.404058104508976e-11,
+        "g_unperturbed": 1.656120181266015
+      },
+      "apv": {
+        "imag_e_bohr": -4.855205544289121e-10,
+        "abs_e_bohr": 4.855205544289121e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732260826e-13,
+        "second_ordering_imag_e_bohr": -4.857397357762347e-10,
+        "smallest_denominator_mc2": 6.521190955055545e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "mass_derivatives": {
+        "0.001": -3.1233281766377996e-11,
+        "0.0005": -3.1233279649690663e-11,
+        "0.00025": -3.123327909142561e-11
+      },
+      "mass_vs_direct_relative_difference": 5.350099696599386e-09,
+      "seconds": 2.540561046000221
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.7415233770185694,
+      "norm_1s": 1.0000000000000053,
+      "delta_energy_pc_mc2": -9.599830478103337e-12,
+      "pv_2p12_1s_imag_mc2": -1.9136949197915842e-11,
+      "magnetic": {
+        "delta_g": -3.123327892432316e-11,
+        "negative_energy_part": 2.807302120762205e-12,
+        "positive_energy_part": -3.404058104508536e-11,
+        "g_unperturbed": 1.6561201812660917
+      },
+      "apv": {
+        "imag_e_bohr": -4.855205544295691e-10,
+        "abs_e_bohr": 4.855205544295691e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732251352e-13,
+        "second_ordering_imag_e_bohr": -4.857397357768914e-10,
+        "smallest_denominator_mc2": 6.521190955044442e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 1.5468881160013552
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.7415233770185897,
+      "norm_1s": 1.0000000000000053,
+      "delta_energy_pc_mc2": -9.599830478102238e-12,
+      "pv_2p12_1s_imag_mc2": -1.9136949197923765e-11,
+      "magnetic": {
+        "delta_g": -3.123327892432108e-11,
+        "negative_energy_part": 2.8073021207671354e-12,
+        "positive_energy_part": -3.404058104508822e-11,
+        "g_unperturbed": 1.6561201812660697
+      },
+      "apv": {
+        "imag_e_bohr": -4.855205543885693e-10,
+        "abs_e_bohr": 4.855205543885693e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732265872e-13,
+        "second_ordering_imag_e_bohr": -4.857397357358918e-10,
+        "smallest_denominator_mc2": 6.521190955599554e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 2.8251056740009517
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.7415233770185288,
+      "norm_1s": 1.0000000000000022,
+      "delta_energy_pc_mc2": -9.599830478156619e-12,
+      "pv_2p12_1s_imag_mc2": -1.9136949198000748e-11,
+      "magnetic": {
+        "delta_g": -3.1233278924493943e-11,
+        "negative_energy_part": 2.8073021207764897e-12,
+        "positive_energy_part": -3.404058104527044e-11,
+        "g_unperturbed": 1.6561201812659658
+      },
+      "apv": {
+        "imag_e_bohr": -4.855205544456812e-10,
+        "abs_e_bohr": 4.855205544456812e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732367498e-13,
+        "second_ordering_imag_e_bohr": -4.857397357930048e-10,
+        "smallest_denominator_mc2": 6.521190954855705e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.4874383009992016
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.7415233770185535,
+      "norm_1s": 1.000000000000003,
+      "delta_energy_pc_mc2": -9.599830478099301e-12,
+      "pv_2p12_1s_imag_mc2": -1.9136949197910113e-11,
+      "magnetic": {
+        "delta_g": -3.123327892430634e-11,
+        "negative_energy_part": 2.8073021207642387e-12,
+        "positive_energy_part": -3.4040581045070576e-11,
+        "g_unperturbed": 1.6561201812660535
+      },
+      "apv": {
+        "imag_e_bohr": -4.85520554407087e-10,
+        "abs_e_bohr": 4.85520554407087e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732249075e-13,
+        "second_ordering_imag_e_bohr": -4.857397357544094e-10,
+        "smallest_denominator_mc2": 6.521190955344203e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.8114901019980607
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "energy_1s_mc2": 0.741523377018569,
+      "norm_1s": 0.999999999999998,
+      "delta_energy_pc_mc2": -9.599830478101188e-12,
+      "pv_2p12_1s_imag_mc2": -1.9136949197914475e-11,
+      "magnetic": {
+        "delta_g": -3.123327892431439e-11,
+        "negative_energy_part": 2.8073021207635238e-12,
+        "positive_energy_part": -3.404058104507791e-11,
+        "g_unperturbed": 1.6561201812660462
+      },
+      "apv": {
+        "imag_e_bohr": -4.855205544113616e-10,
+        "abs_e_bohr": 4.855205544113616e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732254485e-13,
+        "second_ordering_imag_e_bohr": -4.857397357586842e-10,
+        "smallest_denominator_mc2": 6.521190955288692e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 1.1975046840016148
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "energy_1s_mc2": 0.7415233770185513,
+      "norm_1s": 1.0000000000000018,
+      "delta_energy_pc_mc2": -9.599830478119876e-12,
+      "pv_2p12_1s_imag_mc2": -1.913694919792664e-11,
+      "magnetic": {
+        "delta_g": -3.1233278924374784e-11,
+        "negative_energy_part": 2.8073021207668895e-12,
+        "positive_energy_part": -3.4040581045141675e-11,
+        "g_unperturbed": 1.65612018126602
+      },
+      "apv": {
+        "imag_e_bohr": -4.855205544405799e-10,
+        "abs_e_bohr": 4.855205544405799e-10,
+        "first_ordering_imag_e_bohr": 2.1918134732263171e-13,
+        "second_ordering_imag_e_bohr": -4.857397357879025e-10,
+        "smallest_denominator_mc2": 6.521190954900113e-05,
+        "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+      },
+      "seconds": 0.6499987410024914
+    }
+  ],
+  "checks": [
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 1.1722844917017028e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 5.612399434085091e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 9.672262990534364e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 2.2370993946196904e-10,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "quantity": "mass derivative vs direct Zeeman",
+      "relative_difference": 7.473143215364075e-09,
+      "tolerance": 3e-07,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 2.430167178602005e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 1.8700596626786137e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 2.209232796701599e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 5.673739256195631e-11,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 0.0,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 0.0,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 0.0,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 0.0,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 4.289901767151605e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 7.214451258619192e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 2.4447111002245947e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 1.1888601214593564e-10,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 2.0019541580040823e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 5.314193529670774e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 2.1124213489542853e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 1.2233658530647062e-10,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 1.614153255502515e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 4.830802424748981e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 1.5828449662080857e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 2.868467685601672e-10,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 2.6524338281319615e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 4.587663582356072e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 2.728373083016322e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "Pb-208",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 9.664236078066324e-11,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 2.83550960489265e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 3.26405569239796e-14,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 1.0791367799356522e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 8.309197774281074e-11,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "quantity": "mass derivative vs direct Zeeman",
+      "relative_difference": 5.350099696599386e-09,
+      "tolerance": 3e-07,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 1.1435297153639112e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 4.1400216588272087e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 6.661338147750939e-14,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 240,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 8.444511756522388e-11,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 0.0,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 0.0,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 0.0,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 320,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 0.0,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 5.664801960847399e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 4.022782107426792e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 5.534461777756405e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 7,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 1.1763034990508459e-10,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 3.0597746558669314e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 7.133182933216631e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 4.71955807768154e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 11,
+        "nq": 20,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 3.813993565415785e-11,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 1.0935696792557792e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 4.853895063661184e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 2.1438406605511773e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 40,
+        "cavity_bohr": 2.5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 4.694422628404027e-11,
+      "tolerance": 2e-05,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "delta_energy_pc_mc2",
+      "relative_difference": 1.837197061149709e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "pv_2p12_1s_imag_mc2",
+      "relative_difference": 1.503241975342462e-13,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "delta_g",
+      "relative_difference": 1.7192913759345174e-12,
+      "tolerance": 2e-06,
+      "passed": true
+    },
+    {
+      "ion": "U-238",
+      "grid": {
+        "npoints": 160,
+        "order": 9,
+        "nq": 20,
+        "cavity_bohr": 5
+      },
+      "quantity": "imag_e_bohr",
+      "relative_difference": 1.0712342124463703e-10,
+      "tolerance": 2e-05,
+      "passed": true
+    }
+  ]
+}

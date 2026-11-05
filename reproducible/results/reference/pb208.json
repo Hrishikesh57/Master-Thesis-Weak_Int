@@ -1,0 +1,134 @@
+{
+  "status": "spherical one-electron model; no nuclear deformation or precision uncertainty budget",
+  "inputs": {
+    "nucleus": {
+      "z": 82,
+      "n": 126,
+      "charge": {
+        "c_fm": 6.624,
+        "a_fm": 0.523
+      },
+      "proton": {
+        "c_fm": 6.624,
+        "a_fm": 0.523
+      },
+      "neutron": {
+        "c_fm": 6.624,
+        "a_fm": 0.523
+      },
+      "provenance": "Numerical Pb-208 common-profile example only: c=6.624 fm, a=0.523 fm assigned independently but equally to all three profiles. This is an explicit model assumption, not a fit or a measured point-proton/neutron distribution."
+    },
+    "grid": {
+      "npoints": 200,
+      "order": 9,
+      "nq": 20,
+      "cavity_bohr": 2.5
+    },
+    "convention": "slide: H_PC=+Cve*U, H_PV=-gamma5*U; tree-level couplings",
+    "spinor": "(G Omega_kappa, i F Omega_-kappa)/r",
+    "constants": {
+      "alpha": 0.007297352566354976,
+      "lambda_fm": 386.1592676580278,
+      "G_F_m_ref_squared": 3.0456471623406034e-12,
+      "Cve": 0.07520000000000004,
+      "Cvp": 0.07520000000000004
+    }
+  },
+  "input_sha256": "434952ae1305bcad7dfbf7165c201369e6a97e076616e5ab8ef511c7d1818986",
+  "build_manifest": {
+    "source_complete": true,
+    "python": "3.14.8 (main, Oct  1 2026, 00:00:00) [GCC 16.2.1 20260819 (Red Hat 16.2.1-2)]",
+    "numpy": "2.4.6",
+    "compiler": "GNU Fortran (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+    "flags": [
+      "-O2",
+      "-fPIC",
+      "-fcheck=bounds",
+      "-fbacktrace",
+      "-ffree-line-length-none"
+    ],
+    "sources_sha256": {
+      "workspace/codes/bspqed/src/bspqed_function.f90": "52c802059b719acf8e20af5ea90a9eb60896c99e2a82c87de0c1dc10dd2c2d60",
+      "workspace/codes/bspqed/src/bspqed_physconsts.f90": "4eaa0bc62acd357ff4a1e5ec3a2c960939a1717ca95161d7d3c5fcb4d579fe75",
+      "workspace/codes/bspqed/src/bspqed_quadrature.f90": "20bfdb0f8cd70fd0cfd39ee658649ccc66bf3da4394ad36e89b3537a1a3aead1",
+      "workspace/codes/bspqed/src/bspqed_uehling.f90": "0810ad028cf02716ff5f22fc23f8dddf8d760fc7c5d212acb1ba9d9f5130a9c5",
+      "workspace/codes/bspqed/src/bspqed_potentials.f90": "3794be91147f971464cc48a26ccd3a242841561b6831fe3e1beddcbd86bd95a2",
+      "workspace/codes/bspqed/src/bspqed_dkb.f90": "3327dfc4414f4b024e2213d0a2a62a4ab3deca1e37dbd4b91c901a6f5cf97b8c",
+      "workspace/build/slatec/src/dbvalu.f": "2e1b9bba1f395c30864c7d6c9b6a196cb9e4d6029fb499734ab849f6019ac1f9",
+      "workspace/build/slatec/src/dbspvd.f": "bd84bf2c7b0b8969898968667eba3525607f1031107437eddc82bd6f0d6a8817",
+      "workspace/build/slatec/src/dbspvn.f": "b8d2394623c739b9ae224c34b55d3ffe1064baa399e519ec91e3da7d6a0006db",
+      "workspace/build/slatec/src/dintrv.f": "9c942c7e7f379d98573c71e3b38a2c52f4e0ef56c4b20c90ea37639db6fc31a3",
+      "workspace/build/slatec/src/xermsg.f": "dd605784ff3ed3e491f2b4b2f2b8fd21c7f15b6831f8739bbf70c781925b705e",
+      "workspace/build/slatec/src/xerprn.f": "af09d2e9527ef24c8f6cfcf58a5210a8f244b6ec7d7948ab43391b1a9604194c",
+      "workspace/build/slatec/src/xersve.f": "2ecd7f1ca0dbef747a6a34e3aef1cd2637bad704ed48376a3a7544c38bf4fdf3",
+      "workspace/build/slatec/src/j4save.f": "1460f8cbf73dbe00d1ce6ba9aa9f3db86e813731d8a5809c9881691aae293015",
+      "workspace/build/slatec/src/xerhlt.f": "6891b7bf5c0c26fa7460e8a1364d1f88760ba1ea6cb501dd251df28f2dac6689",
+      "workspace/build/slatec/src/xgetua.f": "86b15012160e810b70621ba91acd6ec025c48bb932ee59e95e8f2645416210a2",
+      "workspace/build/slatec/src/i1mach.f": "7a9e027ddb98a3a484b980fb9e3f5878684bb36b7723b8475740e016ff4281f6",
+      "workspace/build/slatec/src/fdump.f": "7805a508652c9fb087916dceb9184bf5e56a98b1c99afa4cbab8f4c4bf9f0369",
+      "workspace/build/slatec/src/xercnt.f": "d0f587024a55d04c6e8536d244858a781fc2148dba587b727a8fb2c0d7433a7b",
+      "workspace/programs/weak_spherical/kernel.f90": "71df4a54580f3826d673614318a0f4cffd08dcda42927928d2e9376097a09bff",
+      "workspace/programs/rad/src/weak_angular_labels.f90": "63a9bc8ace1b130d81ebcb8ca17155103536ccba7a65f9c6855fc4e8000a281f",
+      "workspace/build/slatec/src/dbesk0.f": "1f8739474b1e92e1ae1c26d59a06d8dcdd2056db4cfa29a22d2008fe67fa7c5e",
+      "workspace/build/slatec/src/dbesk1.f": "b984d50e2c38b3269517f6d801a8a76ddc6b11b4416f0fd8d5f9f77d85b1ee42",
+      "workspace/build/slatec/src/dbskin.f": "0e52070b40cb0f3c5058cf01a1e38a8b9a2c8643ae389f33b7b14d0ddacfc996",
+      "workspace/build/slatec/src/erf.f": "c63f326756672d49a7a87ba7897ef83fd4e38a8b8c79351f5197008563d34e6f",
+      "workspace/build/slatec/src/csevl.f": "898d56d906caec38eb1c4e2813172eb59ded8fa895dda054bfc818e3a2f2711d",
+      "workspace/build/slatec/src/d1mach.f": "e630771443ec0116cdd8626c4f3ba48fa36ffd783507124449521f0efad174be",
+      "workspace/build/slatec/src/dbesi0.f": "b4a440b65f4f72ce0ea3d4140fc071e238d009fec10ae10add6b1bec0fede3c8",
+      "workspace/build/slatec/src/dbesi1.f": "1caeedb909be60a466497a4a8a7869e161bec253b984a4f3569decd1fe393a7f",
+      "workspace/build/slatec/src/dbkias.f": "668b1c5d139d40cd5b999875afa057fa393b2a520072fb477a0a836a3a75cc40",
+      "workspace/build/slatec/src/dbkisr.f": "09c12e0b4b3c0933c6a952638203b3fac49fb8ecc49c6a0ba5a338311aedaca9",
+      "workspace/build/slatec/src/dbsk0e.f": "6086ba86ac3d3c761269d9dbc75a6f424cbcbb98e29584a95c4f2233e96781bf",
+      "workspace/build/slatec/src/dbsk1e.f": "31d1a562e6b924b40fd5d89f3df5c16a45d2633901d0aeb65db9f6a89d30690d",
+      "workspace/build/slatec/src/dcsevl.f": "8f907d21bbad242cf415e7916a48f6db2d2793164ac6652ead83a6cbbbd3bd62",
+      "workspace/build/slatec/src/dexint.f": "bb08d955b86d627bf7cfc428b18ca2043de11736352e3a719e9c12b2e3885cfa",
+      "workspace/build/slatec/src/dgamrn.f": "8d6766615afff326a7af3ce29101ba257c33b0649578984e4ba17a51bd97b864",
+      "workspace/build/slatec/src/erfc.f": "8fc79bc57c551b3427bb0e3fdfa521f0d9e7dd8a31d89ad20e9addec92714496",
+      "workspace/build/slatec/src/initds.f": "27175c6f8b8d93c740b62d02667bf9576ce03c114db61abd53755504d0c9f8a6",
+      "workspace/build/slatec/src/inits.f": "aa713f62969180475f9dd1313f08ad75cfdc09d27c28df89ea5cc45ddff805e2",
+      "workspace/build/slatec/src/r1mach.f": "2dd15343acc448da490b173a09101c2ab5ad9b2cc591cbc3cd1228477136f251",
+      "workspace/build/slatec/src/dbdiff.f": "d9cdc6c13791e1ae61da5bc8a625828171c63b5e1bf0eeff811038f303c5eb40",
+      "workspace/build/slatec/src/dbsi0e.f": "1ba478c6c21bb6dbfb55fe5fa73be6cde82a4246db6c9afdc45b671b19d04f0d",
+      "workspace/build/slatec/src/dbsi1e.f": "c007158e783a494700e07a8451934f43ae86db3dd53fe98178cad5bf8a38b088",
+      "workspace/build/slatec/src/dhkseq.f": "df62a0316f5dec0f1c8c97db4af64fc0c7173df45e19993031073207efb561b9",
+      "workspace/build/slatec/src/dpsixn.f": "2f74b721010ba77d1e3bab324cc7495fe5241d6b98d5e1a0331890653343e96c",
+      "workspace/programs/rad/src/something.f90": "0d0bc9e76cb8e5049c752ca44655a401eecb9d96d659c80b4410354f703595b1"
+    },
+    "extension_sha256": "ff6fd0c07c4c6bb60e02899e289bda1f73089da4527fe61c9c607abb37c63a93",
+    "commands_note": "Full command list is generated in workspace/programs/weak_spherical/build_manifest.json when rebuilding; omitted from this portable reference record."
+  },
+  "python_source_sha256": {
+    "spherical.py": "61aa2620b01a2e3fdf982686bdfdb8abdbc961b00f4b34900ccf5ea2768029c4",
+    "run.py": "d6b05fcdd7067ad2ef612b62b80a805ca36a94ef61a6e2668aa8b4322c167e52"
+  },
+  "density_rms_fm": {
+    "charge": 5.48688414269973,
+    "proton": 5.48688414269973,
+    "neutron": 5.48688414269973
+  },
+  "qweak": -119.83359999999999,
+  "energy_1s_mc2": 0.8013411916859431,
+  "normalization_1s": 1.000000000000004,
+  "delta_energy_pc_mc2": -3.892880747150563e-12,
+  "pv_2p12_1s_imag_mc2": -6.340012828574575e-12,
+  "magnetic_response": {
+    "delta_g": -1.334435875774303e-11,
+    "negative_energy_part": 1.4664654025357212e-12,
+    "positive_energy_part": -1.481082416027875e-11,
+    "g_unperturbed": 1.7353980795449249
+  },
+  "delta_g_mass_derivative": {
+    "0.001": -1.3344360594813739e-11,
+    "0.0005": -1.3344359215217033e-11
+  },
+  "magnetic_relative_disagreement": 3.42822021881517e-08,
+  "apv_1s_2s": {
+    "imag_e_bohr": -5.711916958562798e-10,
+    "abs_e_bohr": 5.711916958562798e-10,
+    "first_ordering_imag_e_bohr": 1.0529483874862905e-13,
+    "second_ordering_imag_e_bohr": -5.712969906950285e-10,
+    "smallest_denominator_mc2": 2.078609922229191e-05,
+    "status": "Dirac-only diagnostic; Lamb shifts, linewidths and experimental geometry absent"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "z": 82,
+  "n": 126,
+  "charge": {"c_fm": 6.624, "a_fm": 0.523},
+  "proton": {"c_fm": 6.624, "a_fm": 0.523},
+  "neutron": {"c_fm": 6.624, "a_fm": 0.523},
+  "provenance": "Numerical Pb-208 common-profile example only: c=6.624 fm, a=0.523 fm assigned independently but equally to all three profiles. This is an explicit model assumption, not a fit or a measured point-proton/neutron distribution."
+}

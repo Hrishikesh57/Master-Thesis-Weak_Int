@@ -34,3 +34,6 @@ env/
 # Personal Files
 # ============================
 /Reading/*.pdf
+
+# Outputs from the maintained portfolio demo
+/results/
