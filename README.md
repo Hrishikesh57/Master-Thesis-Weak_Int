@@ -2,7 +2,7 @@
 
 [![Verification](https://github.com/Hrishikesh57/Master-Thesis-Weak_Int/actions/workflows/verify.yml/badge.svg)](https://github.com/Hrishikesh57/Master-Thesis-Weak_Int/actions/workflows/verify.yml)
 
-Master’s-thesis research by **Hrishikesh Sriman-Narayan**, Heidelberg University / Max Planck Institute for Nuclear Physics, supervised by **Zoltan Harman** (2025).
+Master’s-thesis research by **Hrishikesh Sriman-Narayan**
 
 This project studies weak electron–nucleus interactions using relativistic atomic wavefunctions. The current runnable companion solves a finite-nucleus radial Dirac problem in a B-spline dual-kinetic-balance basis, evaluates parity-even weak energy shifts and parity-odd matrix elements, and cross-checks the weak magnetic-response correction through an independent electron-mass derivative.
 
